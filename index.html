@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestion des Primes 2026</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root { --bg:#f1f5f9;--card:#fff;--brd:#e2e8f0;--tx:#1e293b;--tx2:#64748b;--tx3:#94a3b8;--acc:#3b82f6;--grn:#16a34a;--red:#dc2626;--org:#ea580c;--blu:#2563eb; }
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Segoe UI',-apple-system,sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;}
+.container{max-width:1400px;margin:0 auto;padding:16px;}
+button{cursor:pointer;} input{outline:none;}
+
+/* LOGIN */
+.login-screen{display:flex;align-items:center;justify-content:center;min-height:90vh;}
+.login-box{background:var(--card);border-radius:24px;padding:48px;text-align:center;max-width:420px;width:100%;box-shadow:0 4px 24px #0001;}
+.login-box h1{font-size:24px;font-weight:800;margin-bottom:4px;}
+.login-box p{color:var(--tx2);font-size:12px;margin-bottom:24px;}
+.login-input{width:100%;padding:12px 16px;border:2px solid var(--brd);border-radius:12px;font-size:14px;margin-bottom:12px;text-align:center;}
+.login-input:focus{border-color:var(--acc);}
+.login-btn{width:100%;padding:12px;border:none;border-radius:12px;background:var(--tx);color:#fff;font-size:14px;font-weight:700;margin-bottom:16px;}
+.login-btn:hover{background:#334155;}
+.login-btn:disabled{opacity:0.5;cursor:wait;}
+.login-error{color:var(--red);font-size:12px;margin-bottom:8px;}
+.login-setup{background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:14px;text-align:left;font-size:11px;color:#92400e;line-height:1.6;margin-top:12px;}
+.login-setup strong{display:block;margin-bottom:4px;}
+.login-setup input{width:100%;padding:6px 10px;border:1px solid #fde68a;border-radius:6px;font-size:11px;margin-top:6px;}
+
+/* HEADER */
+.header{background:linear-gradient(135deg,#0f172a,#1e293b);border-radius:18px;padding:18px 24px;margin-bottom:16px;color:#fff;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;}
+.header h1{font-size:20px;font-weight:800;letter-spacing:-0.5px;}
+.header-sub{font-size:10px;opacity:0.5;margin-top:2px;}
+.hdr-stats{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.hdr-stat{background:#ffffff12;border-radius:10px;padding:6px 14px;text-align:center;}
+.hdr-stat small{font-size:8px;opacity:0.4;text-transform:uppercase;letter-spacing:1px;display:block;}
+.hdr-stat b{font-size:14px;}
+.btn{padding:8px 16px;border-radius:8px;font-size:11px;font-weight:700;border:none;}
+.btn-grn{background:#10b981;color:#fff;} .btn-grn:hover{background:#059669;}
+.btn-ghost{background:none;border:1px solid #ffffff33;color:#fff;opacity:0.7;font-weight:600;} .btn-ghost:hover{opacity:1;}
+.btn-sm{padding:6px 12px;font-size:10px;border-radius:6px;}
+.btn-danger{background:none;border:1px solid #fca5a5;color:var(--red);font-weight:600;}
+
+/* WARNING */
+.warn{background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:10px 16px;margin-bottom:12px;font-size:11px;color:#92400e;display:flex;align-items:center;gap:8px;}
+
+/* LOADING */
+.loading{text-align:center;padding:60px;color:var(--tx3);}
+.spinner{display:inline-block;width:32px;height:32px;border:3px solid var(--brd);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:12px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* TABS */
+.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px;}
+.tab{padding:8px 16px;border-radius:10px;border:none;background:var(--card);color:var(--tx2);font-weight:700;font-size:11px;transition:all .15s;}
+.tab.on{background:var(--tx);color:#fff;box-shadow:0 3px 10px #1e293b44;}
+
+/* CONFIG */
+.cfg{background:var(--card);border-radius:14px;padding:16px;margin-bottom:12px;border:1px solid var(--brd);}
+.cfg-title{font-weight:800;font-size:13px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;}
+.cfg-row{display:flex;gap:8px;flex-wrap:wrap;}
+.plr{background:#f8fafc;border:1px solid var(--brd);border-radius:10px;padding:10px 14px;flex:1;min-width:130;position:relative;}
+.plr-label{font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;margin-bottom:6px;}
+.plr-r{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
+.plr-r label{font-size:10px;color:var(--tx3);width:48px;}
+.plr-r input{width:52px;padding:4px;border:1px solid var(--brd);border-radius:6px;font-size:12px;text-align:center;font-weight:700;}
+.plr-r span{font-size:11px;color:var(--tx3);}
+.plr-del{position:absolute;top:4px;right:6px;background:none;border:none;color:var(--brd);font-size:14px;}
+.plr-add{background:#f8fafc;border:2px dashed var(--brd);border-radius:10px;padding:10px;color:var(--tx3);font-size:18px;min-width:50px;display:flex;align-items:center;justify-content:center;}
+.plr-add:hover{border-color:var(--acc);color:var(--acc);}
+.aug{display:flex;align-items:center;gap:6px;}
+.aug label{font-size:11px;color:var(--tx2);}
+.aug input{width:50px;padding:4px 6px;border:1px solid var(--brd);border-radius:6px;font-size:12px;text-align:center;font-weight:700;}
+
+/* FORMULE */
+.formule-box{background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:12px 16px;margin-bottom:12px;}
+.formule-title{font-weight:700;font-size:12px;color:#0369a1;margin-bottom:8px;}
+.formule-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;}
+.formule-row label{font-size:11px;color:#0369a1;}
+.formule-row input{width:50px;padding:4px;border:1px solid #bae6fd;border-radius:6px;font-size:12px;text-align:center;font-weight:700;}
+
+/* STATS */
+.stats{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+.st{border-radius:12px;padding:10px 16px;flex:1;min-width:100px;}
+.st-dark{background:var(--tx);color:#fff;}
+.st small{font-size:9px;text-transform:uppercase;opacity:0.5;display:block;}
+.st b{font-size:20px;font-weight:800;display:block;}
+.st span{font-size:10px;opacity:0.5;}
+
+/* MONTH BAR */
+.mbar{display:flex;gap:3px;margin-bottom:12px;flex-wrap:wrap;}
+.mt{padding:5px 9px;border-radius:7px;border:none;font-size:10px;font-weight:600;background:var(--card);color:var(--tx3);}
+.mt.on{background:var(--tx);color:#fff;}
+
+/* MAGASIN */
+.mag{background:var(--card);border-radius:14px;margin-bottom:10px;border:1px solid var(--brd);overflow:hidden;}
+.mag-h{padding:12px 16px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;}
+.mag-name{font-weight:800;font-size:14px;}
+.mag-info{font-size:10px;color:var(--tx3);}
+.vend{padding:10px 16px;border-bottom:1px solid #f8fafc;}
+.vend-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.vend-name{font-weight:700;font-size:12px;}
+.vend-total{font-size:11px;font-weight:800;background:#f1f5f9;padding:2px 10px;border-radius:20px;}
+.mgrid{display:flex;gap:4px;flex-wrap:wrap;}
+.mc{border-radius:8px;padding:6px;border:1px solid var(--brd);min-width:68px;flex:1;}
+.mc.wide{min-width:200px;flex:0 0 200px;}
+.mc-lbl{font-size:9px;color:var(--tx3);font-weight:700;margin-bottom:2px;}
+.mc-obj{font-size:9px;color:var(--tx3);}
+.mc input{width:100%;padding:3px 4px;border:1px solid var(--brd);border-radius:5px;font-size:11px;font-weight:600;margin-top:2px;}
+.mc-res{margin-top:2px;display:flex;justify-content:space-between;font-size:10px;font-weight:700;}
+.mc.bg-g{background:#f0fdf4;border-color:#bbf7d022;} .mc.bg-b{background:#eff6ff;border-color:#bfdbfe22;}
+.mc.bg-o{background:#fff7ed;border-color:#fed7aa22;} .mc.bg-r{background:#fef2f2;border-color:#fecaca22;}
+.tx-g{color:var(--grn);} .tx-b{color:var(--blu);} .tx-o{color:var(--org);} .tx-r{color:var(--red);}
+
+/* VOLANTS */
+.vol-box{background:#fffbeb;border-radius:14px;padding:16px;margin-bottom:12px;border:1px solid #fde68a;}
+.vol-title{font-weight:800;font-size:13px;color:#92400e;margin-bottom:6px;}
+.vol-desc{font-size:11px;color:#78716c;margin-bottom:10px;}
+.vol-chip{background:#fff;border-radius:8px;padding:6px 12px;font-size:11px;border:1px solid #fde68a;display:inline-flex;align-items:center;gap:6px;margin:3px;}
+.vol-assign{background:#fff;border:1px solid #fde68a;border-radius:10px;padding:10px;margin-top:8px;}
+
+/* ADD FORMS */
+.add-form{display:flex;gap:8px;align-items:center;padding:8px 0;flex-wrap:wrap;}
+.add-form input{padding:6px 10px;border:1px solid var(--brd);border-radius:8px;font-size:12px;}
+.add-form select{padding:6px 10px;border:1px solid var(--brd);border-radius:8px;font-size:12px;}
+
+/* RECAP TABLE */
+.rtbl{width:100%;border-collapse:collapse;}
+.rtbl th{padding:8px 12px;text-align:left;font-size:10px;color:var(--tx2);background:#f8fafc;}
+.rtbl td{padding:8px 12px;font-size:12px;border-bottom:1px solid #f1f5f9;}
+.rtbl .r{text-align:right;}
+
+.footer{text-align:center;padding:16px;font-size:10px;color:var(--tx3);}
+
+/* TOAST */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--tx);color:#fff;padding:10px 20px;border-radius:10px;font-size:12px;font-weight:600;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;}
+.toast.show{opacity:1;}
+
+/* MODAL */
+.modal-bg{position:fixed;inset:0;background:#00000044;display:flex;align-items:center;justify-content:center;z-index:100;}
+.modal{background:var(--card);border-radius:16px;padding:24px;max-width:480px;width:90%;box-shadow:0 8px 32px #0002;}
+.modal h3{font-size:16px;font-weight:800;margin-bottom:12px;}
+.modal input,.modal select{width:100%;padding:10px;border:1px solid var(--brd);border-radius:8px;font-size:13px;margin-bottom:10px;}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;}
+</style>
+</head>
+<body>
+
+<div id="app" class="container"></div>
+<div id="toast" class="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════════════════════
+// CONFIG — METTRE VOTRE URL APPS SCRIPT ICI
+// ════════════════════════════════════════════════════════════════════
+let API_URL = localStorage.getItem('primes_api_url') || '';
+
+// ════════════════════════════════════════════════════════════════════
+const M = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+const MS = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+const SAISON = [.083,.078,.086,.086,.085,.084,.092,.091,.082,.086,.079,.089];
+const fmt = n => n==null?'—':Math.round(n).toLocaleString('fr-FR');
+const fmtE = n => n==null?'—':fmt(n)+' €';
+const calcObj = (ca,aug,m) => Math.round(ca*(1+aug/100)*SAISON[m]);
+function calcPrime(t,p){if(t==null)return 0;let r=0;for(const x of[...p].sort((a,b)=>a.seuil-b.seuil)){if(t>=x.seuil)r=x.prime;}return r;}
+function tc(t){if(t==null)return'';if(t>=110)return'g';if(t>=100)return'b';if(t>=95)return'o';return'r';}
+
+let S = { phase:'login', password:'', data:null, activeComp:'', mois:'all', view:'gestion', loading:false, modal:null, volantJours:[] };
+
+// ════════════════════════════════════════════════════════════════════
+// API
+// ════════════════════════════════════════════════════════════════════
+async function api(action, params={}) {
+  const url = new URL(API_URL);
+  url.searchParams.set('action', action);
+  url.searchParams.set('password', S.password);
+  for (const [k,v] of Object.entries(params)) {
+    url.searchParams.set(k, typeof v === 'object' ? JSON.stringify(v) : String(v));
+  }
+  const res = await fetch(url.toString());
+  const json = await res.json();
+  if (json.error) throw new Error(json.error);
+  return json;
+}
+
+function toast(msg, dur=2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// RENDER
+// ════════════════════════════════════════════════════════════════════
+function render() {
+  const app = document.getElementById('app');
+  if (S.phase === 'login') { renderLogin(app); return; }
+  if (S.loading && !S.data) { app.innerHTML = '<div class="loading"><div class="spinner"></div><div>Chargement des données...</div></div>'; return; }
+  if (!S.data) { app.innerHTML = '<div class="loading">Erreur de chargement</div>'; return; }
+  
+  let h = '';
+  h += renderHeader();
+  h += '<div class="warn"><span>🔒</span><b>Données synchronisées</b> — Toutes les modifications sont sauvegardées automatiquement dans votre Google Sheet.</div>';
+  h += renderViewBar();
+  
+  if (S.view === 'recap') { h += renderRecap(); }
+  else {
+    h += renderCompanyTabs();
+    const comp = S.data.companies[S.activeComp];
+    if (comp) {
+      h += renderConfig(comp);
+      h += renderFormule(comp);
+      h += renderStats(comp);
+      h += renderMonthBar();
+      h += comp.magasins.map((mag,mi) => renderMag(mag,mi,comp)).join('');
+      h += renderAddMagasin();
+      h += renderVolants(comp);
+    }
+  }
+  
+  h += '<div class="footer">Plateforme Primes 2026 — Synchronisé avec Google Sheets</div>';
+  if (S.modal) h += S.modal;
+  app.innerHTML = h;
+}
+
+function renderLogin(app) {
+  const err = S.loginError ? `<div class="login-error">${S.loginError}</div>` : '';
+  const dis = S.loading ? 'disabled' : '';
+  app.innerHTML = `<div class="login-screen"><div class="login-box">
+    <h1>Primes 2026</h1>
+    <p>Connectez-vous pour accéder à la plateforme de gestion des primes.</p>
+    ${err}
+    <input class="login-input" type="password" placeholder="Mot de passe" id="pwInput" 
+      value="${S.password}" onkeydown="if(event.key==='Enter')doLogin()" ${dis} />
+    <button class="login-btn" onclick="doLogin()" ${dis}>${S.loading ? 'Connexion...' : 'Se connecter'}</button>
+    <div class="login-setup">
+      <strong>⚙️ Configuration (première fois uniquement)</strong>
+      Collez ici l'URL de votre Google Apps Script :<br>
+      <input id="apiInput" placeholder="https://script.google.com/macros/s/xxxxx/exec" 
+        value="${API_URL}" onchange="saveApiUrl(this.value)" />
+    </div>
+  </div></div>`;
+  setTimeout(() => { const el = document.getElementById('pwInput'); if(el) el.focus(); }, 50);
+}
+
+function renderHeader() {
+  const comps = S.data.companies;
+  let gt = 0;
+  const cstats = Object.entries(comps).map(([n,c]) => {
+    let t = 0;
+    for (const mag of c.magasins) {
+      const ca25 = mag.totalCA2025 || 100000;
+      for (let m = 0; m < 12; m++) {
+        for (const v of mag.vendeurs) {
+          const ca = v.caSaisie?.[m] ?? v.caSheet?.[m];
+          if (ca == null) continue;
+          const obj = v.objManuel?.[m] || calcObj(ca25, c.augmentation||2, m);
+          t += calcPrime((ca/obj)*100, c.paliers||[]);
+        }
+      }
+    }
+    gt += t;
+    return `<div class="hdr-stat"><small>${n.split(' ')[0]}</small><b>${fmtE(t)}</b></div>`;
+  }).join('');
+
+  return `<div class="header"><div>
+    <div style="font-size:9px;text-transform:uppercase;letter-spacing:3px;opacity:.4">Plateforme de gestion</div>
+    <h1>Primes sur Objectifs 2026</h1>
+    <div class="header-sub">${Object.keys(comps).length} sociétés — Synchronisé Google Sheets</div>
+  </div><div class="hdr-stats">${cstats}
+    <button class="btn btn-grn" onclick="doExport()">📥 Export Excel</button>
+    <button class="btn btn-ghost" onclick="doRefresh()">🔄</button>
+    <button class="btn btn-ghost" onclick="doLogout()">Déconnexion</button>
+  </div></div>`;
+}
+
+function renderViewBar() {
+  return `<div style="display:flex;gap:6px;margin-bottom:12px">
+    <button class="tab ${S.view==='gestion'?'on':''}" onclick="S.view='gestion';render()">Gestion par société</button>
+    <button class="tab ${S.view==='recap'?'on':''}" onclick="S.view='recap';render()">Récapitulatif global</button>
+  </div>`;
+}
+
+function renderCompanyTabs() {
+  return `<div class="tabs">${Object.keys(S.data.companies).map(c =>
+    `<button class="tab ${c===S.activeComp?'on':''}" onclick="S.activeComp='${esc(c)}';render()">${c}</button>`
+  ).join('')}</div>`;
+}
+
+function renderConfig(comp) {
+  const ac = esc(S.activeComp);
+  let h = `<div class="cfg"><div class="cfg-title"><span>Paliers de primes</span>
+    <div class="aug"><label>Augmentation vs 2025 :</label>
+    <input type="number" value="${comp.augmentation||2}" onchange="doSaveAug('${ac}',this.value)" /><span style="font-size:11px;color:var(--tx3)">%</span></div>
+  </div><div class="cfg-row">`;
+  (comp.paliers||[]).forEach((p,i) => {
+    h += `<div class="plr">${(comp.paliers||[]).length>2?`<button class="plr-del" onclick="doRemovePalier('${ac}',${i})">×</button>`:''}
+      <div class="plr-label">Palier ${i+1}</div>
+      <div class="plr-r"><label>Seuil</label><input type="number" value="${p.seuil}" onchange="doSavePalier('${ac}')" id="ps${i}" /><span>%</span></div>
+      <div class="plr-r"><label>Prime</label><input type="number" value="${p.prime}" onchange="doSavePalier('${ac}')" id="pp${i}" /><span>€</span></div>
+    </div>`;
+  });
+  h += `<button class="plr-add" onclick="doAddPalier('${ac}')">+</button></div></div>`;
+  return h;
+}
+
+function renderFormule(comp) {
+  const ac = esc(S.activeComp);
+  return `<div class="formule-box">
+    <div class="formule-title">Formule de calcul des objectifs</div>
+    <div class="formule-row">
+      <label>Poids même mois N-1 (Y-1) :</label>
+      <input type="number" value="${comp.poidsY1||70}" onchange="doSaveFormule('${ac}',this.value,document.getElementById('fm1').value)" id="fy1" /><span>%</span>
+      <label style="margin-left:16px">Poids mois précédent (M-1) :</label>
+      <input type="number" value="${comp.poidsM1||30}" onchange="doSaveFormule('${ac}',document.getElementById('fy1').value,this.value)" id="fm1" /><span>%</span>
+    </div>
+    <div style="font-size:10px;color:#0369a1;margin-top:6px;opacity:.7">
+      Objectif = (Y-1 × ${comp.poidsY1||70}% + M-1 × ${comp.poidsM1||30}%) × augmentation. Si pas de données, utilisez l'objectif manuel.
+    </div>
+  </div>`;
+}
+
+function renderStats(comp) {
+  let total=0,sous=0,count=0;
+  const pc={}; (comp.paliers||[]).forEach((_,i)=>pc[i]=0);
+  for(const mag of comp.magasins){
+    const ca25=mag.totalCA2025||100000;
+    for(let m=0;m<12;m++){
+      for(const v of mag.vendeurs){
+        const ca=v.caSaisie?.[m]??v.caSheet?.[m]; if(ca==null)continue; count++;
+        const obj=v.objManuel?.[m]||calcObj(ca25,comp.augmentation||2,m);
+        const t=(ca/obj)*100; const pr=calcPrime(t,comp.paliers||[]); total+=pr;
+        if(t<(comp.paliers||[])[0]?.seuil){sous++;continue;}
+        for(let pi=(comp.paliers||[]).length-1;pi>=0;pi--){if(t>=(comp.paliers||[])[pi].seuil){pc[pi]++;break;}}
+      }
+    }
+  }
+  let h=`<div class="stats"><div class="st st-dark"><small>Coût simulé</small><b>${fmtE(total)}</b><span>${count} mois</span></div>
+    <div class="st" style="background:#fef2f2"><small style="color:#991b1b">Sous objectif</small><b style="color:var(--red)">${sous}</b><span style="color:#991b1b">0€</span></div>`;
+  (comp.paliers||[]).forEach((p,i)=>{
+    const bg=i===(comp.paliers||[]).length-1?'background:#f0fdf4':'background:#f8fafc';
+    const cl=i===(comp.paliers||[]).length-1?'color:var(--grn)':'';
+    h+=`<div class="st" style="${bg}"><small>${p.seuil}%+</small><b style="${cl}">${pc[i]||0}</b><span>${p.prime}€</span></div>`;
+  });
+  h+=`<div class="st" style="background:#fef9c3"><small style="color:#92400e">Volants</small><b style="color:#d97706">${comp.volants?.length||0}</b></div></div>`;
+  return h;
+}
+
+function renderMonthBar() {
+  let h=`<div class="mbar"><button class="mt ${S.mois==='all'?'on':''}" onclick="S.mois='all';render()">Tous</button>`;
+  MS.forEach((m,i)=>{h+=`<button class="mt ${S.mois===String(i)?'on':''}" onclick="S.mois='${i}';render()">${m}</button>`;});
+  return h+'</div>';
+}
+
+function renderMag(mag, magIdx, comp) {
+  const ac = esc(S.activeComp);
+  const ca25 = mag.totalCA2025 || 100000;
+  const augm = comp.augmentation || 2;
+  
+  let h = `<div class="mag"><div class="mag-h"><div>
+    <div class="mag-name">${mag.nom}</div>
+    <div class="mag-info">CA estimé 2025 : ${fmtE(ca25)}</div>
+  </div><div style="display:flex;gap:6px;align-items:center">
+    <span class="mag-info">${mag.vendeurs.length} vendeur(s)</span>
+    <button class="btn btn-sm btn-danger" onclick="doRemoveMag('${ac}','${esc(mag.nom)}')">Supprimer</button>
+  </div></div>`;
+
+  // Vendeurs fixes
+  mag.vendeurs.forEach((v, vi) => {
+    const months = S.mois==='all' ? [...Array(12).keys()] : [parseInt(S.mois)];
+    let totalPrime = 0;
+    for(let m=0;m<12;m++){
+      const ca=v.caSaisie?.[m]??v.caSheet?.[m]; if(ca==null)continue;
+      const obj=v.objManuel?.[m]||calcObj(ca25,augm,m);
+      totalPrime+=calcPrime((ca/obj)*100,comp.paliers||[]);
+    }
+
+    h += `<div class="vend"><div class="vend-h">
+      <span class="vend-name">${v.nom}</span>
+      <div style="display:flex;gap:6px;align-items:center">
+        <span class="vend-total">Total : ${fmtE(totalPrime)}</span>
+        <button class="btn btn-sm btn-danger" onclick="doRemoveVendeur('${ac}','${esc(v.nom)}')">×</button>
+      </div>
+    </div><div class="mgrid">`;
+
+    months.forEach(m => {
+      const obj = v.objManuel?.[m] || calcObj(ca25, augm, m);
+      const ca = v.caSaisie?.[m] ?? v.caSheet?.[m];
+      const taux = ca != null ? (ca/obj)*100 : null;
+      const prime = calcPrime(taux, comp.paliers||[]);
+      const c = tc(taux);
+      const w = S.mois !== 'all' ? ' wide' : '';
+
+      h += `<div class="mc${w} ${c?'bg-'+c:''}">
+        <div class="mc-lbl">${MS[m]}</div>
+        <div class="mc-obj">Obj: ${fmt(obj)} <span style="font-size:8px;cursor:pointer;color:var(--acc)" onclick="showObjModal('${ac}','${esc(mag.nom)}','${esc(v.nom)}',${m},${obj})">✏️</span></div>
+        <input type="number" placeholder="CA réalisé" value="${ca!=null?ca:''}" 
+          onchange="doSaveCA('${ac}','${esc(mag.nom)}','${esc(v.nom)}',${m},this.value)" />
+        ${taux!=null?`<div class="mc-res"><span class="tx-${c}">${taux.toFixed(1)}%</span><span style="color:${prime>0?'var(--grn)':'var(--tx3)'}">${prime}€</span></div>`:''}
+      </div>`;
+    });
+
+    // Show volant assignments for this month
+    if (S.mois !== 'all') {
+      const mIdx = parseInt(S.mois);
+      const vJours = (S.volantJours||[]).filter(vj => vj.societe===S.activeComp && vj.magasin===mag.nom && vj.mois===mIdx);
+      if (vJours.length > 0) {
+        h += `<div style="width:100%;margin-top:4px;font-size:10px;color:#92400e;background:#fffbeb;padding:4px 8px;border-radius:6px">
+          Volants ce mois : ${vJours.map(vj => `<b>${vj.volant}</b> (${vj.jours}j)`).join(', ')}
+        </div>`;
+      }
+    }
+
+    h += '</div></div>';
+  });
+
+  // Add vendeur button
+  h += `<div style="padding:8px 16px"><button class="btn btn-sm" style="background:#f8fafc;border:1px dashed var(--brd);color:var(--tx2)"
+    onclick="showAddVendeurModal('${ac}','${esc(mag.nom)}')">+ Ajouter un vendeur</button></div>`;
+
+  h += '</div>';
+  return h;
+}
+
+function renderAddMagasin() {
+  const ac = esc(S.activeComp);
+  return `<div style="text-align:center;margin-bottom:12px">
+    <button class="btn" style="background:#f8fafc;border:1px dashed var(--brd);color:var(--tx2);padding:12px 24px"
+      onclick="showAddMagModal('${ac}')">+ Ajouter un magasin</button>
+  </div>`;
+}
+
+function renderVolants(comp) {
+  if (!comp.volants?.length) return '';
+  const ac = esc(S.activeComp);
+  let h = `<div class="vol-box"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <div class="vol-title">Vendeurs volants</div>
+    <button class="btn btn-sm" style="background:#fff;border:1px solid #fde68a;color:#92400e" onclick="showAddVolantModal('${ac}')">+ Ajouter volant</button>
+  </div>
+  <div class="vol-desc">Quand un volant remplace un vendeur fixe absent, le manager déclare le nombre de jours. La prime est partagée au prorata.</div>`;
+
+  comp.volants.forEach(v => {
+    h += `<div class="vol-chip"><b>${v.nom}</b><span style="color:#92400e">2025: ${fmtE(v.p25)}</span>
+      <button style="background:none;border:none;color:#fca5a5;font-size:14px" onclick="doRemoveVolant('${ac}','${esc(v.nom)}')">×</button></div>`;
+  });
+
+  // Assignment section if a month is selected
+  if (S.mois !== 'all') {
+    const mIdx = parseInt(S.mois);
+    h += `<div class="vol-assign"><div style="font-weight:700;font-size:11px;color:#92400e;margin-bottom:6px">Affecter un volant pour ${M[mIdx]} :</div>`;
+    
+    comp.magasins.forEach(mag => {
+      const existing = (S.volantJours||[]).filter(vj => vj.societe===S.activeComp && vj.magasin===mag.nom && vj.mois===mIdx);
+      h += `<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap">
+        <span style="font-size:11px;font-weight:600;min-width:120px">${mag.nom}</span>`;
+      
+      comp.volants.forEach(v => {
+        const vj = existing.find(x => x.volant === v.nom);
+        h += `<div style="display:flex;align-items:center;gap:3px;font-size:10px">
+          <span>${v.nom.split(' ')[0]}</span>
+          <input type="number" min="0" max="31" style="width:36px;padding:2px;border:1px solid #fde68a;border-radius:4px;font-size:10px;text-align:center" 
+            placeholder="j" value="${vj?vj.jours:''}" 
+            onchange="doSaveVolantJours('${ac}','${esc(v.nom)}','${esc(mag.nom)}',${mIdx},this.value)" />
+          <span>j</span>
+        </div>`;
+      });
+      h += '</div>';
+    });
+    h += '</div>';
+  }
+
+  h += '</div>';
+  return h;
+}
+
+function renderRecap() {
+  const rows = [];
+  for(const[cn,comp]of Object.entries(S.data.companies)){
+    for(const mag of comp.magasins){
+      const ca25=mag.totalCA2025||100000;
+      for(const v of mag.vendeurs){
+        let tp=0,mc=0;
+        for(let m=0;m<12;m++){
+          const ca=v.caSaisie?.[m]??v.caSheet?.[m]; if(ca==null)continue; mc++;
+          const obj=v.objManuel?.[m]||calcObj(ca25,comp.augmentation||2,m);
+          tp+=calcPrime((ca/obj)*100,comp.paliers||[]);
+        }
+        rows.push({nom:v.nom,company:cn,magasin:mag.nom,months:mc,total:tp,p25:v.p25||0});
+      }
+    }
+  }
+  rows.sort((a,b)=>b.total-a.total);
+  let h=`<div class="mag"><div class="mag-h"><div class="mag-name">Récapitulatif toutes sociétés</div></div>
+    <div style="overflow-x:auto"><table class="rtbl"><thead><tr>
+    <th>Vendeur</th><th>Société</th><th>Magasin</th><th class="r">Primes 2025</th><th class="r">Mois saisis</th><th class="r">Simulé 2026</th><th class="r">Écart</th>
+    </tr></thead><tbody>`;
+  rows.forEach(r=>{
+    const d=r.total-r.p25;const cl=d>0?'var(--red)':d<0?'var(--grn)':'var(--tx3)';const ar=d>0?'▲':d<0?'▼':'';
+    h+=`<tr><td style="font-weight:600">${r.nom}</td><td style="color:var(--tx2);font-size:11px">${r.company}</td>
+    <td style="color:var(--tx2);font-size:11px">${r.magasin}</td><td class="r" style="color:var(--tx3)">${fmtE(r.p25)}</td>
+    <td class="r" style="color:var(--tx3)">${r.months}/12</td>
+    <td class="r" style="font-weight:800;font-size:13px">${fmtE(r.total)}</td>
+    <td class="r" style="font-weight:600;color:${cl}">${ar} ${fmtE(Math.abs(d))}</td></tr>`;
+  });
+  return h+'</tbody></table></div></div>';
+}
+
+// ════════════════════════════════════════════════════════════════════
+// MODALS
+// ════════════════════════════════════════════════════════════════════
+function showAddVendeurModal(comp, mag) {
+  S.modal = `<div class="modal-bg" onclick="if(event.target===this){S.modal=null;render()}"><div class="modal">
+    <h3>Ajouter un vendeur</h3>
+    <p style="font-size:12px;color:var(--tx2);margin-bottom:12px">Magasin : <b>${mag}</b></p>
+    <input placeholder="Nom complet (ex: DUPONT Marie)" id="newVendNom" />
+    <div class="modal-btns">
+      <button class="btn" style="background:#f1f5f9;color:var(--tx2)" onclick="S.modal=null;render()">Annuler</button>
+      <button class="btn" style="background:var(--tx);color:#fff" onclick="doAddVendeur('${comp}','${mag}')">Ajouter</button>
+    </div>
+  </div></div>`;
+  render();
+}
+
+function showAddMagModal(comp) {
+  S.modal = `<div class="modal-bg" onclick="if(event.target===this){S.modal=null;render()}"><div class="modal">
+    <h3>Ajouter un magasin</h3>
+    <input placeholder="Nom du magasin" id="newMagNom" />
+    <input placeholder="Nom du vendeur responsable" id="newMagVend" />
+    <div class="modal-btns">
+      <button class="btn" style="background:#f1f5f9;color:var(--tx2)" onclick="S.modal=null;render()">Annuler</button>
+      <button class="btn" style="background:var(--tx);color:#fff" onclick="doAddMag('${comp}')">Ajouter</button>
+    </div>
+  </div></div>`;
+  render();
+}
+
+function showAddVolantModal(comp) {
+  S.modal = `<div class="modal-bg" onclick="if(event.target===this){S.modal=null;render()}"><div class="modal">
+    <h3>Ajouter un vendeur volant</h3>
+    <input placeholder="Nom complet (ex: MARTIN Pierre)" id="newVolNom" />
+    <div class="modal-btns">
+      <button class="btn" style="background:#f1f5f9;color:var(--tx2)" onclick="S.modal=null;render()">Annuler</button>
+      <button class="btn" style="background:var(--tx);color:#fff" onclick="doAddVolant('${comp}')">Ajouter</button>
+    </div>
+  </div></div>`;
+  render();
+}
+
+function showObjModal(comp, mag, vendeur, mois, currentObj) {
+  S.modal = `<div class="modal-bg" onclick="if(event.target===this){S.modal=null;render()}"><div class="modal">
+    <h3>Objectif manuel — ${MS[mois]}</h3>
+    <p style="font-size:12px;color:var(--tx2);margin-bottom:12px">${vendeur} — ${mag}</p>
+    <p style="font-size:11px;color:var(--tx3);margin-bottom:8px">Objectif calculé : ${fmtE(currentObj)}</p>
+    <input type="number" placeholder="Objectif manuel (laisser vide = auto)" id="newObj" />
+    <div class="modal-btns">
+      <button class="btn" style="background:#f1f5f9;color:var(--tx2)" onclick="S.modal=null;render()">Annuler</button>
+      <button class="btn" style="background:var(--tx);color:#fff" onclick="doSaveObjManuel('${comp}','${mag}','${vendeur}',${mois})">Valider</button>
+    </div>
+  </div></div>`;
+  render();
+}
+
+// ════════════════════════════════════════════════════════════════════
+// ACTIONS
+// ════════════════════════════════════════════════════════════════════
+function esc(s) { return (s||'').replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
+
+window.saveApiUrl = function(url) { API_URL = url.trim(); localStorage.setItem('primes_api_url', API_URL); };
+
+window.doLogin = async function() {
+  S.password = document.getElementById('pwInput')?.value || '';
+  if (!API_URL) { S.loginError = "Veuillez d'abord configurer l'URL Apps Script ci-dessous."; render(); return; }
+  S.loading = true; S.loginError = ''; render();
+  try {
+    const r = await api('check_password');
+    if (r.success) {
+      S.phase = 'main'; render();
+      const data = await api('get_all_data');
+      S.data = data; S.volantJours = data.volantJours || [];
+      S.activeComp = Object.keys(data.companies)[0] || '';
+      S.loading = false; render();
+    } else {
+      S.loginError = 'Mot de passe incorrect'; S.loading = false; render();
+    }
+  } catch(e) {
+    S.loginError = 'Erreur de connexion : ' + e.message; S.loading = false; render();
+  }
+};
+
+window.doLogout = function() { S.phase = 'login'; S.data = null; S.password = ''; render(); };
+
+window.doRefresh = async function() {
+  toast('Actualisation...'); 
+  try { const data = await api('get_all_data'); S.data = data; S.volantJours = data.volantJours || []; render(); toast('Données actualisées'); }
+  catch(e) { toast('Erreur: '+e.message); }
+};
+
+window.doSaveCA = async function(comp, mag, vendeur, mois, val) {
+  // Update locally first
+  const c = S.data.companies[comp];
+  const m = c?.magasins.find(x=>x.nom===mag);
+  const v = m?.vendeurs.find(x=>x.nom===vendeur);
+  if(v){ if(!v.caSaisie)v.caSaisie=new Array(12).fill(null); v.caSaisie[mois]=val===''?null:parseFloat(val); }
+  render();
+  try { await api('save_ca', { societe:comp, magasin:mag, vendeur, mois, ca:val }); toast('CA sauvegardé'); }
+  catch(e) { toast('Erreur: '+e.message); }
+};
+
+window.doSaveObjManuel = async function(comp, mag, vendeur, mois) {
+  const val = document.getElementById('newObj')?.value || '';
+  const c = S.data.companies[comp];
+  const m = c?.magasins.find(x=>x.nom===mag);
+  const v = m?.vendeurs.find(x=>x.nom===vendeur);
+  if(v){ if(!v.objManuel)v.objManuel=new Array(12).fill(null); v.objManuel[mois]=val===''?null:parseFloat(val); }
+  S.modal = null; render();
+  try { await api('save_objectif_manuel', { societe:comp, magasin:mag, vendeur, mois, objectif:val }); toast('Objectif sauvegardé'); }
+  catch(e) { toast('Erreur: '+e.message); }
+};
+
+window.doSavePalier = async function(comp) {
+  const c = S.data.companies[comp];
+  const paliers = [];
+  for(let i=0;i<(c.paliers||[]).length;i++){
+    const s=document.getElementById('ps'+i)?.value; const p=document.getElementById('pp'+i)?.value;
+    if(s&&p)paliers.push({seuil:parseInt(s),prime:parseInt(p)});
+  }
+  c.paliers = paliers; render();
+  try { await api('save_paliers', { societe:comp, paliers:paliers, augmentation:c.augmentation||2, poidsY1:c.poidsY1||70, poidsM1:c.poidsM1||30 }); toast('Paliers sauvegardés'); }
+  catch(e) { toast('Erreur: '+e.message); }
+};
+
+window.doAddPalier = function(comp) {
+  S.data.companies[comp].paliers.push({seuil:120,prime:300}); render();
+};
+
+window.doRemovePalier = function(comp,idx) {
+  S.data.companies[comp].paliers.splice(idx,1); render();
+  doSavePalier(comp);
+};
+
+window.doSaveAug = async function(comp, val) {
+  S.data.companies[comp].augmentation = parseFloat(val)||2; render();
+  try { await api('save_augmentation', { societe:comp, augmentation:val, poidsY1:S.data.companies[comp].poidsY1||70, poidsM1:S.data.companies[comp].poidsM1||30 }); toast('Augmentation sauvegardée'); }
+  catch(e) { toast('Erreur: '+e.message); }
+};
+
+window.doSaveFormule = async function(comp, y1, m1) {
+  S.data.companies[comp].poidsY1 = parseInt(y1)||70;
+  S.data.companies[comp].poidsM1 = parseInt(m1)||30;
+  render();
+  try { await api('save_augmentation', { societe:comp, augmentation:S.data.companies[comp].augmentation||2, poidsY1:y1, poidsM1:m1 }); toast('Formule sauvegardée'); }
+  catch(e) { toast('Erreur: '+e.message); }
+};
+
+window.doSaveVolantJours = async function(comp, volant, magasin, mois, jours) {
+  const j = parseInt(jours)||0;
+  S.volantJours = S.volantJours.filter(x=>!(x.societe===comp&&x.volant===volant&&x.magasin===magasin&&x.mois===mois));
+  if(j>0) S.volantJours.push({societe:comp,volant,magasin,mois,jours:j});
+  render();
+  try { await api('save_volant_jours', { societe:comp, volant, magasin, mois, jours:j }); toast('Jours volant sauvegardés'); }
+  catch(e) { toast('Erreur: '+e.message); }
+};
+
+window.doAddVendeur = async function(comp, mag) {
+  const nom = document.getElementById('newVendNom')?.value?.trim();
+  if(!nom){toast('Entrez un nom');return;}
+  S.modal=null;
+  const c=S.data.companies[comp]; const m=c?.magasins.find(x=>x.nom===mag);
+  if(m)m.vendeurs.push({nom,type:'fixe',ca:new Array(12).fill(null),p25:0});
+  render();
+  try { await api('add_vendeur',{societe:comp,nom,magasin:mag}); toast('Vendeur ajouté'); }
+  catch(e){toast('Erreur: '+e.message);}
+};
+
+window.doRemoveVendeur = async function(comp, nom) {
+  if(!confirm(`Retirer ${nom} ?`))return;
+  const c=S.data.companies[comp];
+  for(const mag of c.magasins){mag.vendeurs=mag.vendeurs.filter(v=>v.nom!==nom);}
+  render();
+  try { await api('remove_vendeur',{societe:comp,nom}); toast('Vendeur retiré'); }
+  catch(e){toast('Erreur: '+e.message);}
+};
+
+window.doAddMag = async function(comp) {
+  const nom=document.getElementById('newMagNom')?.value?.trim();
+  const vend=document.getElementById('newMagVend')?.value?.trim();
+  if(!nom){toast('Entrez un nom de magasin');return;}
+  S.modal=null;
+  S.data.companies[comp].magasins.push({nom,vendeurs:vend?[{nom:vend,type:'fixe',p25:0}]:[],totalCA2025:0});
+  render();
+  try { await api('add_magasin',{societe:comp,nom,vendeur:vend||'Nouveau vendeur'}); toast('Magasin ajouté'); }
+  catch(e){toast('Erreur: '+e.message);}
+};
+
+window.doRemoveMag = async function(comp, nom) {
+  if(!confirm(`Supprimer le magasin ${nom} ? Les vendeurs seront marqués comme partis.`))return;
+  S.data.companies[comp].magasins=S.data.companies[comp].magasins.filter(m=>m.nom!==nom);
+  render();
+  try { await api('remove_magasin',{societe:comp,nom}); toast('Magasin supprimé'); }
+  catch(e){toast('Erreur: '+e.message);}
+};
+
+window.doAddVolant = async function(comp) {
+  const nom=document.getElementById('newVolNom')?.value?.trim();
+  if(!nom){toast('Entrez un nom');return;}
+  S.modal=null;
+  S.data.companies[comp].volants.push({nom,p25:0});
+  render();
+  try { await api('add_volant',{societe:comp,nom}); toast('Volant ajouté'); }
+  catch(e){toast('Erreur: '+e.message);}
+};
+
+window.doRemoveVolant = async function(comp, nom) {
+  if(!confirm(`Retirer le volant ${nom} ?`))return;
+  S.data.companies[comp].volants=S.data.companies[comp].volants.filter(v=>v.nom!==nom);
+  S.volantJours=S.volantJours.filter(x=>!(x.societe===comp&&x.volant===nom));
+  render();
+  try { await api('remove_volant',{societe:comp,nom}); toast('Volant retiré'); }
+  catch(e){toast('Erreur: '+e.message);}
+};
+
+window.doExport = function() {
+  const wb=XLSX.utils.book_new();
+  for(const[cn,comp]of Object.entries(S.data.companies)){
+    const rows=[['Vendeur','Magasin','Type','Primes 2025',...M.flatMap(m=>[`Obj ${m}`,`CA ${m}`,`Taux`,`Prime`]),'Total 2026']];
+    for(const mag of comp.magasins){
+      const ca25=mag.totalCA2025||100000;
+      for(const v of mag.vendeurs){
+        const row=[v.nom,mag.nom,'fixe',v.p25||0];
+        let tp=0;
+        for(let m=0;m<12;m++){
+          const obj=v.objManuel?.[m]||calcObj(ca25,comp.augmentation||2,m);
+          const ca=v.caSaisie?.[m]??v.caSheet?.[m];
+          const t=ca!=null?(ca/obj)*100:null;
+          const p=calcPrime(t,comp.paliers||[]);tp+=p;
+          row.push(obj,ca,t!=null?Math.round(t*10)/10+'%':'',p||'');
+        }
+        row.push(tp); rows.push(row);
+      }
+    }
+    if(comp.volants?.length){rows.push([]);rows.push(['VOLANTS']);
+      for(const v of comp.volants)rows.push([v.nom,'Volant','',v.p25||0]);}
+    const ws=XLSX.utils.aoa_to_sheet(rows);
+    XLSX.utils.book_append_sheet(wb,ws,cn.substring(0,31));
+  }
+  XLSX.writeFile(wb,`Primes_2026_${new Date().toISOString().split('T')[0]}.xlsx`);
+  toast('Export téléchargé');
+};
+
+// INIT
+render();
+</script>
+</body>
+</html>
