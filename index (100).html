@@ -1,0 +1,1978 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestion des Primes 2026</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#f1f5f9;--card:#fff;--brd:#e2e8f0;--tx:#1e293b;--tx2:#64748b;--tx3:#94a3b8;--acc:#3b82f6;--grn:#16a34a;--red:#dc2626;--org:#ea580c;--blu:#2563eb;--vol:#7c3aed;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Segoe UI',-apple-system,sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;}
+.container{max-width:1400px;margin:0 auto;padding:16px;}
+button{cursor:pointer;}input,select{outline:none;font-family:inherit;}
+
+.login-screen{display:flex;align-items:center;justify-content:center;min-height:90vh;}
+.login-box{background:var(--card);border-radius:24px;padding:48px;text-align:center;max-width:420px;width:100%;box-shadow:0 4px 24px #0001;}
+.login-box h1{font-size:24px;font-weight:800;margin-bottom:4px;}
+.login-box p{color:var(--tx2);font-size:12px;margin-bottom:24px;}
+.login-input{width:100%;padding:12px 16px;border:2px solid var(--brd);border-radius:12px;font-size:14px;margin-bottom:12px;text-align:center;}
+.login-input:focus{border-color:var(--acc);}
+.login-btn{width:100%;padding:12px;border:none;border-radius:12px;background:var(--tx);color:#fff;font-size:14px;font-weight:700;margin-bottom:16px;}
+.login-btn:hover{background:#334155;}.login-btn:disabled{opacity:.5;cursor:wait;}
+.login-error{color:var(--red);font-size:12px;margin-bottom:8px;}
+.login-setup{background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:14px;text-align:left;font-size:11px;color:#92400e;line-height:1.6;margin-top:12px;}
+.login-setup strong{display:block;margin-bottom:4px;}
+.login-setup input{width:100%;padding:6px 10px;border:1px solid #fde68a;border-radius:6px;font-size:11px;margin-top:6px;}
+
+.header{background:linear-gradient(135deg,#0f172a,#1e293b);border-radius:18px;padding:18px 24px;margin-bottom:16px;color:#fff;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;}
+.header h1{font-size:20px;font-weight:800;letter-spacing:-.5px;}
+.header-sub{font-size:10px;opacity:.5;margin-top:2px;}
+.hdr-stats{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.hdr-stat{background:#ffffff12;border-radius:10px;padding:6px 14px;text-align:center;}
+.hdr-stat small{font-size:8px;opacity:.4;text-transform:uppercase;letter-spacing:1px;display:block;}
+.hdr-stat b{font-size:14px;}
+.btn{padding:8px 16px;border-radius:8px;font-size:11px;font-weight:700;border:none;}
+.btn-grn{background:#10b981;color:#fff;}.btn-grn:hover{background:#059669;}
+.btn-ghost{background:none;border:1px solid #ffffff33;color:#fff;opacity:.7;font-weight:600;}.btn-ghost:hover{opacity:1;}
+.btn-sm{padding:5px 11px;font-size:10px;border-radius:6px;}
+.btn-danger{background:none;border:1px solid #fca5a5;color:var(--red);font-weight:600;}
+.btn-parti{background:none;border:1px solid #fed7aa;color:#c2410c;font-weight:600;font-size:10px;padding:4px 10px;border-radius:6px;}
+.btn-parti:hover{background:#fff7ed;}
+.btn-revenir{background:none;border:1px solid #bbf7d0;color:#15803d;font-weight:600;font-size:10px;padding:4px 10px;border-radius:6px;}
+.btn-revenir:hover{background:#f0fdf4;}
+
+.warn{background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:10px 16px;margin-bottom:12px;font-size:11px;color:#92400e;display:flex;align-items:center;gap:8px;}
+.loading{text-align:center;padding:60px;color:var(--tx3);}
+.spinner{display:inline-block;width:32px;height:32px;border:3px solid var(--brd);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:12px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.nav-tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px;}
+.tab{padding:8px 16px;border-radius:10px;border:none;background:var(--card);color:var(--tx2);font-weight:700;font-size:11px;transition:all .15s;}
+.tab.on{background:var(--tx);color:#fff;box-shadow:0 3px 10px #1e293b44;}
+.tab.vol-on{background:var(--vol);color:#fff;box-shadow:0 3px 10px #7c3aed44;}
+
+.cfg{background:var(--card);border-radius:14px;padding:16px;margin-bottom:12px;border:1px solid var(--brd);}
+.cfg-title{font-weight:800;font-size:13px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;}
+.cfg-row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;}
+.plr{background:#f8fafc;border:1px solid var(--brd);border-radius:10px;padding:10px 14px;flex:1;min-width:180px;position:relative;}
+.plr-label{font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;margin-bottom:6px;}
+.plr-r{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
+.plr-r label{font-size:10px;color:var(--tx3);width:44px;flex-shrink:0;}
+.plr-r input{width:52px;padding:4px;border:1px solid var(--brd);border-radius:6px;font-size:12px;text-align:center;font-weight:700;}
+.plr-r select{padding:4px 6px;border:1px solid var(--brd);border-radius:6px;font-size:11px;font-weight:600;background:#fff;color:var(--tx);flex:1;}
+.plr-r span{font-size:11px;color:var(--tx3);}
+.plr-del{position:absolute;top:4px;right:6px;background:none;border:none;color:var(--tx3);font-size:16px;}
+.plr-add{background:#f8fafc;border:2px dashed var(--brd);border-radius:10px;padding:12px 10px;color:var(--tx3);font-size:18px;min-width:50px;display:flex;align-items:center;justify-content:center;align-self:stretch;}
+.plr-add:hover{border-color:var(--acc);color:var(--acc);}
+.aug{display:flex;align-items:center;gap:6px;}
+.aug label{font-size:11px;color:var(--tx2);}
+.aug input{width:50px;padding:4px 6px;border:1px solid var(--brd);border-radius:6px;font-size:12px;text-align:center;font-weight:700;}
+
+.mgr-row{display:flex;align-items:center;gap:8px;}
+.mgr-row label{font-size:11px;color:var(--tx2);font-weight:700;white-space:nowrap;}
+.mgr-input{padding:7px 12px;border:1px solid var(--brd);border-radius:8px;font-size:12px;font-weight:600;width:210px;}
+.mgr-input:focus{border-color:var(--acc);}
+
+.formule-box{background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:12px 16px;margin-bottom:12px;}
+.formule-title{font-weight:700;font-size:12px;color:#0369a1;margin-bottom:8px;}
+.formule-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;}
+.formule-row label{font-size:11px;color:#0369a1;}
+.formule-row input{width:50px;padding:4px;border:1px solid #bae6fd;border-radius:6px;font-size:12px;text-align:center;font-weight:700;}
+
+.stats{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+.st{border-radius:12px;padding:10px 16px;flex:1;min-width:90px;}
+.st-dark{background:var(--tx);color:#fff;}
+.st small{font-size:9px;text-transform:uppercase;opacity:.5;display:block;}
+.st b{font-size:18px;font-weight:800;display:block;}
+.st span{font-size:10px;opacity:.5;}
+
+.mbar{display:flex;gap:3px;margin-bottom:12px;flex-wrap:wrap;}
+.mt{padding:5px 9px;border-radius:7px;border:none;font-size:10px;font-weight:600;background:var(--card);color:var(--tx3);}
+.mt.on{background:var(--tx);color:#fff;}
+
+.mag{background:var(--card);border-radius:14px;margin-bottom:10px;border:1px solid var(--brd);overflow:hidden;}
+.mag-h{padding:12px 16px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;}
+.mag-name{font-weight:800;font-size:14px;}
+.mag-sub{font-size:10px;color:var(--tx3);}
+.vend{padding:10px 16px;border-bottom:1px solid #f8fafc;}
+.vend.parti-vend{opacity:.55;background:#fff8f8;}
+.vend-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px;}
+.vend-name{font-weight:700;font-size:12px;}
+.vend-total{font-size:11px;font-weight:800;background:#f1f5f9;padding:2px 10px;border-radius:20px;}
+.mgrid{display:flex;gap:4px;flex-wrap:wrap;}
+.mc{border-radius:8px;padding:6px;border:1px solid var(--brd);min-width:68px;flex:1;}
+.mc.wide{min-width:200px;flex:0 0 200px;}
+.mc-lbl{font-size:9px;color:var(--tx3);font-weight:700;margin-bottom:2px;}
+.mc-obj{font-size:9px;color:var(--tx3);}
+.mc input{width:100%;padding:3px 4px;border:1px solid var(--brd);border-radius:5px;font-size:11px;font-weight:600;margin-top:2px;}
+.mc-res{margin-top:2px;display:flex;justify-content:space-between;font-size:10px;font-weight:700;}
+.mc.bg-g{background:#f0fdf4;}.mc.bg-b{background:#eff6ff;}.mc.bg-o{background:#fff7ed;}.mc.bg-r{background:#fef2f2;}
+.tx-g{color:var(--grn);}.tx-b{color:var(--blu);}.tx-o{color:var(--org);}.tx-r{color:var(--red);}
+
+.badge-fixe{background:#eff6ff;color:var(--blu);font-size:9px;font-weight:800;padding:1px 7px;border-radius:20px;border:1px solid #bfdbfe;}
+.badge-vol{background:#f5f3ff;color:var(--vol);font-size:9px;font-weight:800;padding:1px 7px;border-radius:20px;border:1px solid #ddd6fe;}
+.badge-parti{background:#fef2f2;color:var(--red);font-size:9px;font-weight:800;padding:1px 7px;border-radius:20px;border:1px solid #fca5a5;}
+.vend-name-wrap{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+
+.vol-section{background:#faf5ff;border:1px solid #ddd6fe;border-radius:14px;padding:16px;margin-bottom:12px;}
+.vol-section-hd{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:4px;}
+.vol-section-title{font-weight:800;font-size:13px;color:var(--vol);}
+.vol-section-desc{font-size:11px;color:#6d28d9;margin-bottom:12px;opacity:.7;}
+.vol-chips{display:flex;flex-wrap:wrap;margin-bottom:10px;}
+.vol-chip{background:#fff;border-radius:8px;padding:6px 12px;font-size:11px;border:1px solid #ddd6fe;display:inline-flex;align-items:center;gap:6px;margin:3px;}
+.vol-assign-tbl{background:#fff;border:1px solid #ddd6fe;border-radius:10px;overflow:hidden;margin-top:10px;}
+.vol-assign-row{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid #f5f3ff;flex-wrap:wrap;}
+.vol-assign-row:last-child{border-bottom:none;}
+.vol-assign-mag{font-size:11px;font-weight:700;min-width:150px;}
+.va-item{display:flex;align-items:center;gap:4px;font-size:10px;background:#f5f3ff;padding:3px 8px;border-radius:6px;}
+.va-item input{width:34px;padding:2px 4px;border:1px solid #ddd6fe;border-radius:4px;font-size:10px;text-align:center;background:#fff;}
+
+.p25-bar{background:linear-gradient(135deg,#0f172a,#1e293b);border-radius:14px;padding:16px;margin-bottom:12px;color:#fff;}
+.p25-bar-title{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;opacity:.4;margin-bottom:12px;}
+.p25-cards{display:flex;gap:8px;flex-wrap:wrap;}
+.p25-card{background:#ffffff12;border-radius:10px;padding:10px 16px;flex:1;min-width:110px;}
+.p25-card small{font-size:9px;opacity:.5;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:2px;}
+.p25-card b{font-size:16px;font-weight:800;}
+.p25-card sub{font-size:10px;opacity:.5;display:block;margin-top:2px;}
+.p25-card-total{background:#3b82f620;border:1px solid #3b82f640;}
+
+.list-panel{background:var(--card);border-radius:14px;margin-bottom:12px;border:1px solid var(--brd);overflow:hidden;}
+.list-ph{padding:14px 16px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
+.list-ph-title{font-weight:800;font-size:14px;}
+.list-ph-sub{font-size:11px;color:var(--tx3);margin-top:2px;}
+.search-wrap{position:relative;min-width:200px;flex:1;max-width:340px;}
+.search-wrap input{width:100%;padding:8px 12px 8px 34px;border:1px solid var(--brd);border-radius:10px;font-size:12px;}
+.search-wrap::before{content:"🔍";position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:12px;}
+.fbtn-row{display:flex;gap:4px;flex-wrap:wrap;}
+.fbtn{padding:5px 12px;border-radius:7px;border:1px solid var(--brd);font-size:10px;font-weight:700;background:#f8fafc;color:var(--tx2);}
+.fbtn.on{background:var(--tx);color:#fff;border-color:var(--tx);}
+.fbtn.vol-on{background:var(--vol);color:#fff;border-color:var(--vol);}
+
+.vrow{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid #f1f5f9;transition:background .1s;gap:8px;}
+.vrow:hover{background:#f8fafc;}
+.vrow.parti-row{opacity:.6;background:#fff8f8;}
+.vrow-left{display:flex;align-items:center;gap:10px;min-width:0;}
+.vrow-av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;background:var(--tx);color:#fff;}
+.vrow-av.vol{background:var(--vol);}
+.vrow-av.parti{background:#fca5a5;color:#7f1d1d;}
+.vrow-info{line-height:1.5;min-width:0;}
+.vrow-nom{font-weight:700;font-size:13px;}
+.vrow-meta{font-size:10px;color:var(--tx3);}
+.vrow-meta2{font-size:10px;color:var(--vol);margin-top:1px;}
+.vrow-right{display:flex;align-items:center;gap:10px;flex-shrink:0;text-align:right;}
+.list-empty{padding:40px;text-align:center;color:var(--tx3);font-size:13px;}
+
+.mag-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;padding:16px;}
+.mag-card{background:#f8fafc;border:1px solid var(--brd);border-radius:12px;padding:12px 14px;}
+.mag-card-name{font-weight:800;font-size:13px;margin-bottom:3px;}
+.mag-card-mgr{font-size:11px;color:var(--tx2);margin-bottom:8px;}
+.mag-card-stats{display:flex;gap:6px;flex-wrap:wrap;font-size:10px;color:var(--tx3);margin-bottom:8px;}
+.mag-card-stat{background:#fff;border-radius:6px;padding:2px 8px;border:1px solid var(--brd);}
+.mag-card-btns{display:flex;gap:6px;}
+
+.rtbl{width:100%;border-collapse:collapse;}
+.rtbl th{padding:8px 12px;text-align:left;font-size:10px;color:var(--tx2);background:#f8fafc;white-space:nowrap;}
+.rtbl td{padding:8px 12px;font-size:12px;border-bottom:1px solid #f1f5f9;}
+.rtbl .r{text-align:right;}
+.rtbl tr:hover td{background:#f8fafc;}
+
+/* GLOBAL SEARCH BAR */
+.gsearch-bar{background:var(--card);border-radius:14px;padding:10px 16px;margin-bottom:12px;border:1px solid var(--brd);display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.gsearch-input{flex:1;min-width:220px;padding:9px 14px 9px 36px;border:2px solid var(--brd);border-radius:10px;font-size:13px;font-family:inherit;transition:border-color .15s;}
+.gsearch-input:focus{border-color:var(--acc);outline:none;}
+.gsearch-wrap{position:relative;flex:1;min-width:220px;}
+.gsearch-wrap::before{content:"🔍";position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none;}
+.gsearch-hits{font-size:11px;color:var(--tx3);}
+.gsearch-hit{background:#fef9c3;border-radius:2px;font-weight:700;color:#92400e;}
+.gsearch-clear{padding:6px 12px;border-radius:8px;border:1px solid var(--brd);background:#f8fafc;color:var(--tx2);font-size:11px;font-weight:700;}
+.gsearch-clear:hover{background:#f1f5f9;}
+.gsearch-result{padding:7px 10px;border-radius:8px;background:#f8fafc;border:1px solid var(--brd);font-size:12px;font-weight:600;cursor:pointer;transition:background .1s;}
+.gsearch-result:hover{background:#eff6ff;border-color:#bfdbfe;}
+
+/* RH SOCIETY TABS */
+.rh-tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:14px;}
+.rh-tab{padding:7px 16px;border-radius:10px;border:none;background:var(--card);color:var(--tx2);font-weight:700;font-size:11px;transition:all .15s;border:1px solid var(--brd);}
+.rh-tab.on{background:var(--acc);color:#fff;border-color:var(--acc);box-shadow:0 3px 10px #3b82f644;}
+.rh-tab.all-on{background:var(--tx);color:#fff;border-color:var(--tx);}
+
+.footer{text-align:center;padding:16px;font-size:10px;color:var(--tx3);}
+
+.toast{position:fixed;bottom:20px;right:20px;background:var(--tx);color:#fff;padding:10px 20px;border-radius:10px;font-size:12px;font-weight:600;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;}
+.toast.show{opacity:1;}
+
+.modal-bg{position:fixed;inset:0;background:#00000055;display:flex;align-items:center;justify-content:center;z-index:200;padding:16px;}
+.modal{background:var(--card);border-radius:16px;padding:24px;max-width:500px;width:100%;box-shadow:0 8px 40px #0004;max-height:90vh;overflow-y:auto;}
+.modal h3{font-size:16px;font-weight:800;margin-bottom:4px;}
+.modal-sub{font-size:12px;color:var(--tx2);margin-bottom:16px;}
+.modal label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-bottom:4px;margin-top:8px;}
+.modal input,.modal select{width:100%;padding:10px;border:1px solid var(--brd);border-radius:8px;font-size:13px;font-family:inherit;}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;}
+</style>
+</head>
+<body>
+<div id="app" class="container"></div>
+<div id="toast" class="toast"></div>
+<script>
+let API_URL=localStorage.getItem('primes_api_url')||'';
+const M=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+const MS=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+const SAISON=[.083,.078,.086,.086,.085,.084,.092,.091,.082,.086,.079,.089];
+const fmt=n=>n==null?'—':Math.round(n).toLocaleString('fr-FR');
+const fmtE=n=>n==null?'—':fmt(n)+' €';
+const fmtPrime=n=>n==null?'—':(Math.round(n*100)/100).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:2})+' €';
+const calcObj=(ca,aug,m)=>Math.round(ca*(1+(aug/100))*SAISON[m]);
+// Récupérer la formule pour un mois donné (gère l'ancien et nouveau format)
+function getFormuleMois(comp,year,mois,mag=null){
+  // Override par magasin en priorité
+  if(mag&&mag.formules&&mag.formules[year]){
+    const mf=Array.isArray(mag.formules[year])?mag.formules[year][mois]:mag.formules[year];
+    if(mf)return mf;
+  }
+  if(!comp.formules || !comp.formules[year]) return {poidsY1:70,poidsM1:30,augmentation:2};
+  const formule=comp.formules[year];
+  if(Array.isArray(formule)){
+    return formule[mois]||{poidsY1:70,poidsM1:30,augmentation:2};
+  }
+  return formule;
+}
+const OPS=[{val:'>=',label:'≥ supérieur ou égal',short:'≥'},{val:'<=',label:'≤ inférieur ou égal',short:'≤'},{val:'>',label:'> strictement supérieur',short:'>'},{val:'<',label:'< strictement inférieur',short:'<'}];
+
+function calcPrime(t,pal){
+  if(t==null)return 0;let r=0;
+  const s=[...pal].sort((a,b)=>b.seuil-a.seuil);
+  for(const x of s){const op=x.operateur||'>=';let ok=false;
+    if(op==='>=')ok=t>=x.seuil;else if(op==='<=')ok=t<=x.seuil;else if(op==='>')ok=t>x.seuil;else ok=t<x.seuil;
+    if(ok){r=x.prime;break;}}return r;}
+
+// Obtenir le nom du vendeur pour un mois donné (gère les remplacements)
+function getVendeurName(v,mois,year){
+  if(!v.remplacements||v.remplacements.length===0)return v.nom;
+  const currentDate=new Date(year,mois,1);
+  for(let i=v.remplacements.length-1;i>=0;i--){
+    const [y,m,d]=v.remplacements[i].dateRemplacement.split('-').map(Number);
+    const replDate=new Date(y,m-1,d);
+    if(currentDate>=replDate)return v.remplacements[i].nomRemplacant;
+  }
+  return v.nom;
+}
+
+function tc(t){if(t==null)return'';if(t>=110)return'g';if(t>=100)return'b';if(t>=95)return'o';return'r';}
+function esc(s){return(s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');}
+function ini(n){return(n||'').split(' ').map(w=>w[0]||'').join('').substring(0,2).toUpperCase()||'?';}
+
+// Filtrer les magasins système
+const isSystemMagasin = (magNom) => ['Anciens vendeurs', '__partis__', 'Non assignés', 'Autre', 'Non assigné'].includes(magNom);
+const filterNormalMagasins = (magasins) => {
+  const mois=parseInt(S.mois)||0;
+  const year=S.selectedYear||2025;
+  return magasins.filter(m => {
+    if(isSystemMagasin(m.nom))return false;
+    if(!m.dateFermeture)return true;
+    if(S.mois==='all')return true;
+    const [yearFerm,monthFerm,dayFerm]=(m.dateFermeture.split('-')||[]).map(Number);
+    if(!yearFerm||!monthFerm)return true;
+    
+    // Si on est avant l'année de fermeture, afficher le magasin
+    if(year<yearFerm)return true;
+    // Si on est après l'année de fermeture, NE PAS afficher
+    if(year>yearFerm)return false;
+    // Si on est dans l'année de fermeture, vérifier le mois
+    if(year===yearFerm){
+      const currentDate=new Date(year,mois,1).getTime();
+      const fermetureDate=new Date(yearFerm,monthFerm-1,dayFerm||1).getTime();
+      return currentDate<fermetureDate;
+    }
+    return false;
+  });
+};
+
+
+let S={phase:'login',password:'',data:null,activeComp:'',mois:'all',view:'gestion',loading:false,modal:null,volantJours:[],volantCA:[],
+  fixSearch:'',fixFilter:'all',volSearch:'',volFilter:'all',subTab:'fixes',
+  recapMode:'annuel',recapMois:0,rhSocTab:'all',globalSearch:'',recapSearch:'',
+  selectedYear:2025,availableYears:[],caDataLoaded:false,caCache:{}};
+
+
+// ══════ GLOBAL SEARCH ══════
+function renderGlobalSearch(){
+  const q=(S.globalSearch||'').trim();
+  if(!q)return`<div class="gsearch-bar">
+    <span style="font-size:14px">🔍</span>
+    <div class="gsearch-wrap"><input class="gsearch-input" placeholder="Rechercher vendeur, magasin, société, manager sur tout le site..."
+      value="${esc(S.globalSearch)}" oninput="S.globalSearch=this.value;renderGlobalResults()"/></div>
+    <span class="gsearch-hits" style="opacity:.5">Recherche globale dans toutes les données</span>
+    <div id="gsearch-results" style="display:none"></div>
+  </div>`;
+
+  // Compute results
+  const results=[];
+  for(const[cn,comp]of Object.entries(S.data.companies)){
+    const mgr=comp.manager||'';
+    for(const mag of comp.magasins){
+      const magMgr=mag.manager||mgr;
+      for(const v of mag.vendeurs){
+        const fields=[v.nom,cn,mag.nom,magMgr].join(' ').toLowerCase();
+        if(fields.includes(q.toLowerCase()))results.push({type:'vendeur',nom:v.nom,societe:cn,magasin:mag.nom,manager:magMgr,parti:!!v.parti});
+      }
+    }
+    for(const v of (comp.volants||[])){
+      const fields=[v.nom,cn,mgr].join(' ').toLowerCase();
+      if(fields.includes(q.toLowerCase()))results.push({type:'volant',nom:v.nom,societe:cn,manager:mgr,parti:!!v.parti});
+    }
+    if([cn,mgr].join(' ').toLowerCase().includes(q.toLowerCase())){
+      results.push({type:'societe',nom:cn,manager:mgr,nMag:filterNormalMagasins(comp.magasins).length});
+    }
+    for(const mag of comp.magasins){
+      if([mag.nom,mag.manager||mgr,cn].join(' ').toLowerCase().includes(q.toLowerCase())){
+        results.push({type:'magasin',nom:mag.nom,societe:cn,manager:mag.manager||mgr,ca:mag.totalCA2025||0});
+      }
+    }
+  }
+  // Deduplicate by key
+  const seen=new Set();const uniq=results.filter(r=>{const k=r.type+r.nom+r.societe;if(seen.has(k))return false;seen.add(k);return true;});
+
+  const n=uniq.length;
+  const hl=s=>{if(!q)return s;try{return s.replace(new RegExp(q.replace(/[-[\/{}()*+?.,\\^$|#\s]/g,'\\$&'),'gi'),m=>`<mark class="gsearch-hit">${m}</mark>`);}catch(e){return s;}};
+  let res='';
+  if(n===0){res=`<span style="color:var(--tx3);font-size:12px">Aucun résultat pour « ${q} »</span>`;}
+  else{
+    res=uniq.slice(0,12).map(r=>{
+      if(r.type==='vendeur')return`<div class="gsearch-result" onclick="navToVendeur('${esc(r.societe)}','${esc(r.magasin)}')">
+        <span class="badge-fixe">FIXE</span> ${hl(r.nom)} <span style="color:var(--tx3);font-size:11px">· ${hl(r.societe)} · ${hl(r.magasin)}${r.manager?' · 👤 '+hl(r.manager):''}${r.parti?' · <span class=\'badge-parti\'>PARTI</span>':''}</span>
+      </div>`;
+      if(r.type==='volant')return`<div class="gsearch-result" onclick="navToVolant('${esc(r.societe)}')">
+        <span class="badge-vol">VOLANT</span> ${hl(r.nom)} <span style="color:var(--tx3);font-size:11px">· ${hl(r.societe)}${r.manager?' · 👤 '+hl(r.manager):''}${r.parti?' · <span class=\'badge-parti\'>PARTI</span>':''}</span>
+      </div>`;
+      if(r.type==='societe')return`<div class="gsearch-result" onclick="navToSociete('${esc(r.nom)}')">
+        <span style="font-size:11px;background:#f1f5f9;padding:1px 7px;border-radius:20px;font-weight:700">SOCIÉTÉ</span> ${hl(r.nom)} <span style="color:var(--tx3);font-size:11px">· 👤 ${hl(r.manager||'—')} · ${r.nMag} magasin(s)</span>
+      </div>`;
+      if(r.type==='magasin')return`<div class="gsearch-result" onclick="navToSociete('${esc(r.societe)}')">
+        <span style="font-size:11px;background:#f0fdf4;color:var(--grn);padding:1px 7px;border-radius:20px;font-weight:700;border:1px solid #bbf7d0">MAGASIN</span> ${hl(r.nom)} <span style="color:var(--tx3);font-size:11px">· ${hl(r.societe)} · 👤 ${hl(r.manager||'—')}</span>
+      </div>`;
+      return'';
+    }).join('');
+    if(n>12)res+=`<div style="font-size:11px;color:var(--tx3);padding:6px 0">... et ${n-12} autres résultats. Précisez votre recherche.</div>`;
+  }
+
+  return`<div class="gsearch-bar" style="flex-direction:column;align-items:stretch;gap:8px">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span style="font-size:14px">🔍</span>
+      <div class="gsearch-wrap" style="flex:1"><input class="gsearch-input" placeholder="Rechercher sur tout le site..." value="${esc(q)}"
+        oninput="S.globalSearch=this.value;renderGlobalResults()"/></div>
+      <button class="gsearch-clear" onclick="S.globalSearch='';render()">✕ Effacer</button>
+      <span class="gsearch-hits">${n} résultat(s) pour « ${q} »</span>
+    </div>
+    <div id="gsearch-results" style="display:flex;flex-direction:column;gap:4px">${res}</div>
+  </div>`;
+}
+
+window.renderGlobalResults=function(){
+  // Update only results, NOT the input (to keep focus/cursor)
+  const q=(S.globalSearch||'').trim();
+  if(!q){
+    const bar=document.querySelector('.gsearch-bar');
+    if(bar){const newBar=document.createElement('div');newBar.innerHTML=renderGlobalSearch();bar.replaceWith(newBar.firstElementChild);}
+    return;
+  }
+  
+  // Compute results (same logic as renderGlobalSearch)
+  const results=[];
+  for(const[cn,comp]of Object.entries(S.data.companies)){
+    const mgr=comp.manager||'';
+    for(const mag of comp.magasins){
+      const magMgr=mag.manager||mgr;
+      for(const v of mag.vendeurs){
+        const fields=[v.nom,cn,mag.nom,magMgr].join(' ').toLowerCase();
+        if(fields.includes(q.toLowerCase()))results.push({type:'vendeur',nom:v.nom,societe:cn,magasin:mag.nom,manager:magMgr,parti:!!v.parti});
+      }
+    }
+    for(const v of (comp.volants||[])){
+      const fields=[v.nom,cn,mgr].join(' ').toLowerCase();
+      if(fields.includes(q.toLowerCase()))results.push({type:'volant',nom:v.nom,societe:cn,manager:mgr,parti:!!v.parti});
+    }
+    if([cn,mgr].join(' ').toLowerCase().includes(q.toLowerCase())){
+      results.push({type:'societe',nom:cn,manager:mgr,nMag:filterNormalMagasins(comp.magasins).length});
+    }
+    for(const mag of comp.magasins){
+      if([mag.nom,mag.manager||mgr,cn].join(' ').toLowerCase().includes(q.toLowerCase())){
+        results.push({type:'magasin',nom:mag.nom,societe:cn,manager:mag.manager||mgr,ca:mag.totalCA2025||0});
+      }
+    }
+  }
+  const seen=new Set();const uniq=results.filter(r=>{const k=r.type+r.nom+r.societe;if(seen.has(k))return false;seen.add(k);return true;});
+  const n=uniq.length;
+  const hl=s=>{if(!q)return s;try{return s.replace(new RegExp(q.replace(/[-[\/{}()*+?.,\\^$|#\s]/g,'\\$&'),'gi'),m=>`<mark class="gsearch-hit">${m}</mark>`);}catch(e){return s;}};
+  
+  let res='';
+  if(n===0){res=`<span style="color:var(--tx3);font-size:12px">Aucun résultat pour « ${q} »</span>`;}
+  else{
+    res=uniq.slice(0,12).map(r=>{
+      if(r.type==='vendeur')return`<div class="gsearch-result" onclick="navToVendeur('${esc(r.societe)}','${esc(r.magasin)}')">
+        <span class="badge-fixe">FIXE</span> ${hl(r.nom)} <span style="color:var(--tx3);font-size:11px">· ${hl(r.societe)} · ${hl(r.magasin)}${r.manager?' · 👤 '+hl(r.manager):''}${r.parti?' · <span class=\'badge-parti\'>PARTI</span>':''}</span>
+      </div>`;
+      if(r.type==='volant')return`<div class="gsearch-result" onclick="navToVolant('${esc(r.societe)}')">
+        <span class="badge-vol">VOLANT</span> ${hl(r.nom)} <span style="color:var(--tx3);font-size:11px">· ${hl(r.societe)}${r.manager?' · 👤 '+hl(r.manager):''}${r.parti?' · <span class=\'badge-parti\'>PARTI</span>':''}</span>
+      </div>`;
+      if(r.type==='societe')return`<div class="gsearch-result" onclick="navToSociete('${esc(r.nom)}')">
+        <span style="font-size:11px;background:#f1f5f9;padding:1px 7px;border-radius:20px;font-weight:700">SOCIÉTÉ</span> ${hl(r.nom)} <span style="color:var(--tx3);font-size:11px">· 👤 ${hl(r.manager||'—')} · ${r.nMag} magasin(s)</span>
+      </div>`;
+      if(r.type==='magasin')return`<div class="gsearch-result" onclick="navToSociete('${esc(r.societe)}')">
+        <span style="font-size:11px;background:#f0fdf4;color:var(--grn);padding:1px 7px;border-radius:20px;font-weight:700;border:1px solid #bbf7d0">MAGASIN</span> ${hl(r.nom)} <span style="color:var(--tx3);font-size:11px">· ${hl(r.societe)} · 👤 ${hl(r.manager||'—')}</span>
+      </div>`;
+      return'';
+    }).join('');
+    if(n>12)res+=`<div style="font-size:11px;color:var(--tx3);padding:6px 0">... et ${n-12} autres résultats. Précisez votre recherche.</div>`;
+  }
+  
+  // Update ONLY the results div and the counter
+  const resultsDiv=document.getElementById('gsearch-results');
+  const hitsSpan=document.querySelector('.gsearch-hits');
+  if(resultsDiv){
+    resultsDiv.innerHTML=res;
+    resultsDiv.style.display='flex';
+    resultsDiv.style.flexDirection='column';
+    resultsDiv.style.gap='4px';
+  }
+  if(hitsSpan)hitsSpan.textContent=`${n} résultat(s) pour « ${q} »`;
+};
+
+window.navToSociete=function(comp){
+  S.globalSearch='';S.view='gestion';S.activeComp=comp;S.gestionTab='fixes';render();
+  setTimeout(()=>window.scrollTo({top:0,behavior:'smooth'}),100);
+};
+window.navToVendeur=function(comp,mag){
+  S.globalSearch='';S.view='gestion';S.activeComp=comp;S.gestionTab='fixes';render();
+  setTimeout(()=>{
+    const el=document.querySelector(`[data-vendeur="${esc(mag)}"]`);
+    if(el)el.scrollIntoView({behavior:'smooth',block:'center'});
+  },100);
+};
+window.navToVolant=function(comp){
+  S.globalSearch='';S.view='gestion';S.activeComp=comp;S.gestionTab='volants';render();
+  setTimeout(()=>window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'}),100);
+};
+
+async function api(action,params={}){
+  const url=new URL(API_URL);url.searchParams.set('action',action);url.searchParams.set('password',S.password);
+  for(const[k,v]of Object.entries(params))url.searchParams.set(k,typeof v==='object'?JSON.stringify(v):String(v));
+  const res=await fetch(url.toString());const json=await res.json();
+  if(json.error)throw new Error(json.error);return json;}
+
+function toast(msg,dur=2500){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),dur);}
+
+function render(){
+  const app=document.getElementById('app');
+  if(S.phase==='login'){renderLogin(app);return;}
+  if(S.loading&&!S.data){app.innerHTML='<div class="loading"><div class="spinner"></div><div>Chargement...</div></div>';return;}
+  if(!S.data){app.innerHTML='<div class="loading">Erreur de chargement</div>';return;}
+  let h=renderHeader();
+  h+='<div class="warn"><span>🔒</span><b>Données synchronisées</b> — Sauvegardé dans Google Sheets.</div>';
+  h+=renderGlobalSearch();
+  h+=renderViewBar();
+  if(S.view==='recap')h+=renderRecap();
+  else if(S.view==='vendeurs')h+=renderVendeursPage();
+  else{
+    h+=renderTotals2025Banner();
+    h+=renderCompTabs();
+    const comp=S.data.companies[S.activeComp];
+    if(comp){
+      h+=renderConfig(comp);h+=renderFormule(comp);h+=renderStats(comp, S.gestionTab || 'fixes');h+=renderMonthBar();
+      
+      // Sous-onglets Fixes / Volants seulement
+      const gestionTab = S.gestionTab || 'fixes';
+      h+=`<div class="nav-tabs" style="margin-bottom:16px">
+        <button class="tab ${gestionTab==='fixes'?'on':''}" onclick="S.gestionTab='fixes';render()">🏪 Vendeurs Fixes</button>
+        <button class="tab ${gestionTab==='volants'?'vol-on':''}" onclick="S.gestionTab='volants';render()">🔄 Vendeurs Volants</button>
+      </div>`;
+      
+      if(gestionTab === 'fixes'){
+        // Filtrer les magasins normaux
+        const normalMags = filterNormalMagasins(comp.magasins);
+        h+=normalMags.map((m,i)=>renderMag(m,i,comp)).join('');
+        h+=`<div style="text-align:center;margin-bottom:12px"><button class="btn" style="background:#f8fafc;border:1px dashed var(--brd);color:var(--tx2);padding:12px 24px" onclick="showAddMagModal('${esc(S.activeComp)}')">+ Ajouter un magasin</button></div>`;
+      } else if(gestionTab === 'volants'){
+        h+=renderVolSection(comp);
+      }
+    }}
+  h+='<div class="footer">Plateforme Primes 2026 — Synchronisé avec Google Sheets</div>';
+  if(S.modal)h+=S.modal;
+  app.innerHTML=h;}
+
+function renderLogin(app){
+  const err=S.loginError?`<div class="login-error">${S.loginError}</div>`:'';
+  const dis=S.loading?'disabled':'';
+  app.innerHTML=`<div class="login-screen"><div class="login-box"><h1>Primes 2026</h1>
+    <p>Connectez-vous pour accéder à la plateforme.</p>${err}
+    <input class="login-input" type="password" placeholder="Mot de passe" id="pwInput" value="${S.password}" onkeydown="if(event.key==='Enter')doLogin()" ${dis}/>
+    <button class="login-btn" onclick="doLogin()" ${dis}>${S.loading?'Connexion...':'Se connecter'}</button>
+    <div class="login-setup"><strong>⚙️ Configuration (première fois)</strong>URL Google Apps Script :<br>
+      <input id="apiInput" placeholder="https://script.google.com/macros/s/xxxxx/exec" value="${API_URL}" onchange="saveApiUrl(this.value)"/></div>
+  </div></div>`;setTimeout(()=>document.getElementById('pwInput')?.focus(),50);}
+
+function renderTotals2025Banner(){
+  const comps=S.data.companies;
+  const year=S.selectedYear||2025;
+  const formule=year===2025?{poidsY1:70,poidsM1:30,augmentation:2}:{poidsY1:70,poidsM1:30,augmentation:2};
+  let totalGeneral=0;
+  let cards='';
+  
+  for(const[cn,comp]of Object.entries(comps)){
+    let totalYear=0;
+    const compFormule=comp.formules?.[year]||formule;
+    const augm=compFormule.augmentation||2;
+    
+    // Vendeurs fixes
+    for(const mag of comp.magasins){
+      const ca25=mag.totalCA2025||100000;
+      const nActifs=mag.vendeurs.filter(v=>!v.parti).length||1;
+      for(const v of mag.vendeurs){
+        if(v.parti)continue;
+        let tp=0;
+        for(let m=0;m<12;m++){
+          // Utiliser caSheetAuto si disponible (chargé du Sheet CA)
+          const ca=v.caSheetAuto?.[m]??v.caSaisie?.[m];
+          if(ca==null)continue;
+          const obj=v.objSheetAuto?.[m]??v.objManuel?.[m]??calcObj(ca25,augm,m);
+          const primeMag=calcPrime((ca/obj)*100,comp.paliers||[]);
+          const volPrime=getStoreTotalVolantPrimeMois(cn,comp,mag,ca25,m,year);
+          tp+=Math.round(Math.max(0,primeMag-volPrime)/nActifs*100)/100;
+        }
+        totalYear+=tp;
+      }
+    }
+
+    // Vendeurs volants
+    for(const vl of (comp.volants||[])){
+      if(vl.parti)continue;
+      let p=0;for(let m=0;m<12;m++)p+=getVolantTotalPrimeMois(cn,comp,vl,m,year);
+      totalYear+=p;
+    }
+    
+    totalGeneral+=totalYear;
+    cards+=`<div style="background:#f5f3ff;border:2px solid #ddd6fe;border-radius:14px;padding:14px 20px;min-width:160px;text-align:center">
+      <div style="font-size:10px;color:#7c3aed;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">${cn}</div>
+      <div style="font-size:22px;font-weight:800;color:#6d28d9">${fmtE(totalYear)}</div>
+    </div>`;
+  }
+  
+  return`<div style="background:linear-gradient(135deg,#7c3aed,#a78bfa);border-radius:16px;padding:18px 24px;margin-bottom:16px;box-shadow:0 4px 12px #7c3aed22">
+    <div style="color:#fff;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:2px;opacity:.8;margin-bottom:12px">📊 TOTAL PRIMES ${year} PAR SOCIÉTÉ</div>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:space-between">
+      <div style="display:flex;gap:12px;flex-wrap:wrap">${cards}</div>
+      <div style="background:#faf5ff;border:3px solid #fff;border-radius:14px;padding:14px 24px;text-align:center;min-width:180px">
+        <div style="font-size:10px;color:#7c3aed;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">🏆 TOTAL GÉNÉRAL</div>
+        <div style="font-size:26px;font-weight:800;color:#6d28d9">${fmtE(totalGeneral)}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderHeader(){
+  const comps=S.data.companies;
+  return`<div class="header"><div>
+    <div style="font-size:9px;text-transform:uppercase;letter-spacing:3px;opacity:.4">Plateforme de gestion</div>
+    <h1>Primes sur Objectifs</h1>
+    <div class="header-sub">${Object.keys(comps).length} sociétés — Synchronisé Google Sheets</div>
+  </div><div class="hdr-stats">
+    <button class="btn btn-grn" onclick="doExport()">📥 Export Excel</button>
+    <button class="btn btn-ghost" onclick="doRefresh()">🔄</button>
+    <button class="btn btn-ghost" onclick="doLogout()">Déconnexion</button>
+  </div></div>`;}
+
+function renderViewBar(){
+  return`<div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+    <button class="tab ${S.view==='gestion'?'on':''}" onclick="S.view='gestion';render()">📊 Gestion par société</button>
+    <button class="tab ${S.view==='recap'?'on':''}" onclick="S.view='recap';render()">📋 Récapitulatif</button>
+    <button class="tab ${S.view==='vendeurs'?'on':''}" onclick="S.view='vendeurs';render()">👥 Vendeurs & Magasins</button>
+  </div>`;}
+
+function renderCompTabs(){
+  let h=`<div class="nav-tabs">${Object.keys(S.data.companies).map(c=>
+    `<button class="tab ${c===S.activeComp?'on':''}" onclick="S.activeComp='${esc(c)}';render()">${c}</button>`
+  ).join('')}`;
+  
+  // Ajouter le sélecteur d'années
+  if(S.availableYears.length>0){
+    h+=`<select class="year-select" onchange="changeYear(this.value)" style="margin-left:auto;padding:8px 12px;border-radius:8px;border:2px solid var(--brd);background:var(--card);font-size:11px;font-weight:700;cursor:pointer;">`;
+    // Trier pour avoir 2025 en premier
+    const sortedYears=[...S.availableYears].sort((a,b)=>{
+      if(a===2025)return -1;
+      if(b===2025)return 1;
+      return b-a;
+    });
+    for(const year of sortedYears){
+      h+=`<option value="${year}" ${year===S.selectedYear?'selected':''}>${year}</option>`;
+    }
+    h+=`</select>`;
+  }
+  
+  h+=`</div>`;
+  return h;
+}
+
+function renderConfig(comp){
+  const ac=esc(S.activeComp);const mgr=comp.manager||'';
+  let h=`<div class="cfg"><div class="cfg-title"><span>Configuration — <b>${S.activeComp}</b></span>
+    <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+      <div class="mgr-row"><label>👤 Manager :</label>
+        <input class="mgr-input" type="text" placeholder="Nom du manager" value="${esc(mgr)}" onchange="doSaveManager('${ac}',this.value)"/></div>
+    </div></div>
+  <div style="font-size:11px;font-weight:700;color:var(--tx2);margin-bottom:8px">Paliers de primes</div>
+  <div class="cfg-row">`;
+  (comp.paliers||[]).forEach((p,i)=>{
+    const opV=p.operateur||'>=';
+    const opOpts=OPS.map(o=>`<option value="${o.val}"${opV===o.val?' selected':''}>${o.label}</option>`).join('');
+    h+=`<div class="plr">${(comp.paliers||[]).length>2?`<button class="plr-del" onclick="doRemovePalier('${ac}',${i})">×</button>`:''}
+      <div class="plr-label">Palier ${i+1}</div>
+      <div class="plr-r"><label>Cond.</label><select id="po${i}" onchange="doSavePalier('${ac}')">${opOpts}</select></div>
+      <div class="plr-r"><label>Seuil</label><input type="number" value="${p.seuil}" id="ps${i}" onchange="doSavePalier('${ac}')"/><span>%</span></div>
+      <div class="plr-r"><label>Prime</label><input type="number" value="${p.prime}" id="pp${i}" onchange="doSavePalier('${ac}')"/><span>€</span></div>
+    </div>`;});
+  h+=`<button class="plr-add" onclick="doAddPalier('${ac}')">+</button></div></div>`;return h;}
+
+function renderFormule(comp){
+  const ac=esc(S.activeComp);
+  const year=S.selectedYear||2025;
+  
+  // Si S.mois === 'all', afficher la formule par défaut (tous les mois)
+  if(S.mois==='all'){
+    const formule=comp.formules?.[year]||{poidsY1:comp.poidsY1||70,poidsM1:comp.poidsM1||30,augmentation:comp.augmentation||2};
+    const py1=formule.poidsY1||70;
+    const pm1=formule.poidsM1||30;
+    const aug=formule.augmentation||2;
+    return`<div class="formule-box"><div class="formule-title">Formule de calcul des objectifs (${year}) — Tous les mois</div>
+      <div class="formule-row">
+        <label>Poids N-1 :</label><input type="number" value="${py1}" id="fy1" onchange="doSaveFormule('${ac}',${year},this.value,document.getElementById('fm1').value,document.getElementById('faug').value)"/><span>%</span>
+        <label style="margin-left:12px">Poids M-1 :</label><input type="number" value="${pm1}" id="fm1" onchange="doSaveFormule('${ac}',${year},document.getElementById('fy1').value,this.value,document.getElementById('faug').value)"/><span>%</span>
+        <label style="margin-left:12px">Augmentation :</label><input type="number" value="${aug}" id="faug" onchange="doSaveFormule('${ac}',${year},document.getElementById('fy1').value,document.getElementById('fm1').value,this.value)"/><span>%</span>
+      </div><div style="font-size:10px;color:#0369a1;margin-top:6px;opacity:.7">Objectif = ${py1}% × (CA mois précédent × évolution N-1) + ${pm1}% × CA même mois N-1 &nbsp;|&nbsp; évolution N-1 = CA mois (N-1) ÷ CA mois précédent (N-1) &nbsp;|&nbsp; augmentation globale : +${aug}%</div>
+    </div>`;
+  }
+  
+  // Sinon, afficher la formule du mois sélectionné
+  const moisSel=parseInt(S.mois);
+  const formuleMois=getFormuleMois(comp,year,moisSel);
+  const py1=formuleMois.poidsY1||70;
+  const pm1=formuleMois.poidsM1||30;
+  const aug=formuleMois.augmentation||2;
+  
+  return`<div class="formule-box"><div class="formule-title">Formule de calcul des objectifs (${year}) — ${M[moisSel]}</div>
+    <div class="formule-row">
+      <label>Poids N-1 :</label><input type="number" value="${py1}" id="fy1" onchange="doSaveFormuleMois('${ac}',${year},${moisSel},this.value,document.getElementById('fm1').value,document.getElementById('faug').value)"/><span>%</span>
+      <label style="margin-left:12px">Poids M-1 :</label><input type="number" value="${pm1}" id="fm1" onchange="doSaveFormuleMois('${ac}',${year},${moisSel},document.getElementById('fy1').value,this.value,document.getElementById('faug').value)"/><span>%</span>
+      <label style="margin-left:12px">Augmentation :</label><input type="number" value="${aug}" id="faug" onchange="doSaveFormuleMois('${ac}',${year},${moisSel},document.getElementById('fy1').value,document.getElementById('fm1').value,this.value)"/><span>%</span>
+    </div><div style="font-size:10px;color:#0369a1;margin-top:6px;opacity:.7">Objectif = ${py1}% × (CA mois précédent × évolution N-1) + ${pm1}% × CA même mois N-1 &nbsp;|&nbsp; évolution N-1 = CA mois (N-1) ÷ CA mois précédent (N-1) &nbsp;|&nbsp; augmentation globale : +${aug}%</div>
+    
+    <div style="margin-top:16px;border-top:1px solid #e0e7ff;padding-top:12px;">
+      <div style="font-size:11px;font-weight:700;color:#0369a1;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;cursor:pointer" onclick="S.showMagasinsFormule=!S.showMagasinsFormule;render()">
+        ${S.showMagasinsFormule?'▼':'▶'} Formules par magasin
+      </div>
+      ${S.showMagasinsFormule?`<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">
+        ${comp.magasins.map(mag=>{
+          const isOpen=S.selectedMagasinFormule===mag.nom;
+          const magFormule=getFormuleMois(comp,year,moisSel,mag);
+          const mpy1=magFormule.poidsY1||70;const mpm1=magFormule.poidsM1||30;const maug=magFormule.augmentation||2;
+          const hasOverride=mag.formules&&mag.formules[year]&&(Array.isArray(mag.formules[year])?mag.formules[year][moisSel]:mag.formules[year]);
+          return`<div style="background:#f0f9ff;border:1px solid ${hasOverride?'#6366f1':'#bfdbfe'};border-radius:6px;overflow:hidden">
+            <div style="padding:8px 12px;cursor:pointer;font-size:11px;font-weight:600;display:flex;justify-content:space-between;align-items:center" onclick="S.selectedMagasinFormule=S.selectedMagasinFormule==='${esc(mag.nom)}'?null:'${esc(mag.nom)}';render()">
+              <span>📍 ${mag.nom}</span>
+              <span style="display:flex;gap:8px;align-items:center">
+                ${hasOverride?`<span style="font-size:9px;background:#e0e7ff;color:#4338ca;padding:1px 6px;border-radius:4px">formule perso</span>`:''}
+                <span style="color:#0369a1">${isOpen?'▲':'▼'}</span>
+              </span>
+            </div>
+            ${isOpen?`<div style="padding:8px 12px;border-top:1px solid #bfdbfe;background:#fff">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+                <label style="font-size:11px">Poids N-1:</label><input type="number" style="width:52px" value="${mpy1}" id="mfy1_${esc(mag.nom)}" onchange="doSaveFormuleMag('${ac}','${esc(mag.nom)}',${year},${moisSel},this.value,document.getElementById('mfm1_${esc(mag.nom)}').value,document.getElementById('mfaug_${esc(mag.nom)}').value)"/><span style="font-size:11px">%</span>
+                <label style="font-size:11px;margin-left:8px">Poids M-1:</label><input type="number" style="width:52px" value="${mpm1}" id="mfm1_${esc(mag.nom)}" onchange="doSaveFormuleMag('${ac}','${esc(mag.nom)}',${year},${moisSel},document.getElementById('mfy1_${esc(mag.nom)}').value,this.value,document.getElementById('mfaug_${esc(mag.nom)}').value)"/><span style="font-size:11px">%</span>
+                <label style="font-size:11px;margin-left:8px">Aug:</label><input type="number" style="width:52px" value="${maug}" id="mfaug_${esc(mag.nom)}" onchange="doSaveFormuleMag('${ac}','${esc(mag.nom)}',${year},${moisSel},document.getElementById('mfy1_${esc(mag.nom)}').value,document.getElementById('mfm1_${esc(mag.nom)}').value,this.value)"/><span style="font-size:11px">%</span>
+                ${hasOverride?`<button style="margin-left:8px;font-size:10px;background:#fee2e2;border:1px solid #fca5a5;border-radius:4px;padding:2px 8px;cursor:pointer;color:#991b1b" onclick="doResetFormuleMag('${ac}','${esc(mag.nom)}',${year},${moisSel})">Réinitialiser</button>`:''}
+              </div>
+              <div style="font-size:9px;color:#64748b">${mpy1}% × (CA préc. × évol. N-1) + ${mpm1}% × CA N-1 | aug: +${maug}%</div>
+            </div>`:''}
+          </div>`;}).join('')}
+      </div>`:''}
+    </div>
+  </div>`;
+}
+function renderStats(comp, type='fixes'){
+  let total=0,sous=0,count=0,sansCA=0;const pc={};(comp.paliers||[]).forEach((_,i)=>pc[i]=0);
+  
+  const year=S.selectedYear||2025;
+  
+  const selectedMois = S.mois === 'all' ? null : parseInt(S.mois);
+  const moisToCheck = selectedMois !== null ? [selectedMois] : [...Array(12).keys()];
+  
+  const allVendeurs = new Set();
+  
+  for(const mag of comp.magasins){
+    const ca25=mag.totalCA2025||100000;
+    for(const v of mag.vendeurs){
+      // Filtrer par type : fixes ou volants
+      const isVolant = v.type === 'volant' || /volant|divers/i.test(mag.nom);
+      if(type==='fixes' && isVolant) continue; // Skip volants si on veut les fixes
+      if(type==='volants' && !isVolant) continue; // Skip fixes si on veut les volants
+      
+      if(v.parti)continue;
+      allVendeurs.add(v.nom);
+      
+        for(const m of moisToCheck){
+        const ca=v.caSheetAuto?.[m]??v.caSaisie?.[m];
+        if(ca!=null){
+          hasCA = true;
+          count++;
+          const formuleMois=getFormuleMois(comp,year,m);
+          const augm=formuleMois.augmentation||2;
+          const obj=v.objSheetAuto?.[m]??v.objManuel?.[m]??calcObj(ca25,augm,m);
+          const t=(ca/obj)*100;const pr=calcPrime(t,comp.paliers||[]);total+=pr;
+          let matched=false;
+          for(let pi=(comp.paliers||[]).length-1;pi>=0;pi--){
+            const pp=(comp.paliers||[])[pi];const op=pp.operateur||'>=';
+            let ok=false;if(op==='>=')ok=t>=pp.seuil;else if(op==='<=')ok=t<=pp.seuil;else if(op==='>')ok=t>pp.seuil;else ok=t<pp.seuil;
+            if(ok){pc[pi]++;matched=true;break;}}
+          if(!matched)sous++;
+        }
+      }
+      if(!hasCA)sansCA++;
+    }
+  }
+  
+  const totV=comp.magasins.reduce((s,m)=>s+m.vendeurs.filter(v=>!v.parti && (type==='volants'?v.type==='volant':v.type!=='volant')).length,0);
+  const totVol=(comp.volants||[]).filter(v=>!v.parti).length;
+  
+  let h=`<div class="stats">
+    <div class="st st-dark"><small>Coût simulé</small><b>${fmtE(total)}</b></div>
+    <div class="st" style="background:#eff6ff"><small style="color:#1d4ed8">Fixes actifs</small><b style="color:var(--blu)">${type==='volants'?0:totV}</b></div>
+    <div class="st" style="background:#f5f3ff"><small style="color:var(--vol)">Volants actifs</small><b style="color:var(--vol)">${type==='volants'?totVol:0}</b></div>
+    <div class="st" style="background:#fef2f2"><small style="color:#991b1b">Hors palier</small><b style="color:var(--red)">${sous}</b></div>`;
+  (comp.paliers||[]).forEach((p,i)=>{const op=p.operateur||'>=';const opS=OPS.find(o=>o.val===op)?.short||'≥';
+    const bg=i===(comp.paliers||[]).length-1?'background:#f0fdf4':'background:#f8fafc';
+    const cl=i===(comp.paliers||[]).length-1?'color:var(--grn)':'';
+    h+=`<div class="st" style="${bg}"><small>${opS}${p.seuil}%</small><b style="${cl}">${pc[i]||0}</b><span>${p.prime}€</span></div>`;});
+  return h+'</div>';}
+
+function renderMonthBar(){
+  let h=`<div class="mbar"><button class="mt ${S.mois==='all'?'on':''}" onclick="S.mois='all';render()">Tous</button>`;
+  MS.forEach((m,i)=>h+=`<button class="mt ${S.mois===String(i)?'on':''}" onclick="S.mois='${i}';render()">${m}</button>`);
+  return h+'</div>';}
+
+
+function renderMag(mag,mi,comp){
+  const ac=esc(S.activeComp);const ca25=mag.totalCA2025||100000;
+  const year=S.selectedYear||2025;
+  const mgr=mag.manager||comp.manager||'';
+  const badgeFerm=mag.dateFermeture?`<span style="background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600">FERMÉ ${mag.dateFermeture}</span>`:'';
+  let h=`<div class="mag" data-vendeur="${esc(mag.nom)}"><div class="mag-h"><div>
+    <div class="mag-name">🏬 ${mag.nom} ${badgeFerm}</div>
+    <div class="mag-sub">CA réalisé : ${fmtE(ca25)}</div>
+  </div><div style="display:flex;gap:6px;flex-wrap:wrap">
+    <button class="btn btn-sm" style="background:#f8fafc;border:1px solid var(--brd);color:var(--tx2)" onclick="showEditMagModal('${ac}','${esc(mag.nom)}')">✏️ Modifier</button>
+    <button class="btn btn-sm" style="background:#fef3c7;border:1px solid var(--brd);color:#92400e" onclick="doFermerMagasin('${ac}','${esc(mag.nom)}')">🚪 Fermé</button>
+    <button class="btn btn-sm btn-danger" onclick="doRemoveMag('${ac}','${esc(mag.nom)}')">Supprimer</button>
+  </div></div>`;
+  
+  // Filtrer les vendeurs partis (ne les afficher que dans le récap)
+  const vendeursActifs = mag.vendeurs.filter(v => !v.parti);
+  const nActifs=vendeursActifs.length||1;
+
+  vendeursActifs.forEach((v)=>{
+    const isP=!!v.parti;const months=S.mois==='all'?[...Array(12).keys()]:[parseInt(S.mois)];
+    const year=S.selectedYear||2025;
+    const displayName=S.mois==='all'?v.nom:getVendeurName(v,parseInt(S.mois),year);
+    let tp=0;for(let m=0;m<12;m++){const ca=v.caSheetAuto?.[m]??v.caSaisie?.[m];if(ca==null)continue;
+      const formuleMois=getFormuleMois(comp,year,m,mag);const augm=formuleMois.augmentation||2;
+      const obj=v.objSheetAuto?.[m]??v.objManuel?.[m]??calcObj(ca25,augm,m);const primeMag0=calcPrime((ca/obj)*100,comp.paliers||[]);const volPrime0=getStoreTotalVolantPrimeMois(S.activeComp,comp,mag,ca25,m,year);tp+=Math.round(Math.max(0,primeMag0-volPrime0)/nActifs*100)/100;}    h+=`<div class="vend${isP?' parti-vend':''}"><div class="vend-h">
+      <div class="vend-name-wrap"><span class="vend-name">${displayName}</span><span class="badge-fixe">FIXE</span>${isP?'<span class="badge-parti">PARTI</span>':''}</div>
+      ${mag.nom==='Non assigné' && !isP?`<div style="margin-top:6px"><input type="text" placeholder="Magasin" value="${v.magasinTemporaire||''}" onchange="doAssignMagasin('${ac}','${esc(v.nom)}',this.value)" style="padding:6px;border:1px solid var(--brd);border-radius:4px;width:150px"/></div>`:''}
+      <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">
+        <span class="vend-total">Total : ${fmtE(tp)}</span>
+        ${isP?`<button class="btn-revenir" onclick="doToggleParti('${ac}','${esc(mag.nom)}','${esc(v.nom)}',false)">↩ Revenu</button>`
+            :`<button class="btn-parti" onclick="doToggleParti('${ac}','${esc(mag.nom)}','${esc(v.nom)}',true)">🚪 Parti</button>`}
+        <button class="btn btn-sm" style="background:#dbeafe;border:1px solid var(--brd);color:#0c4a6e)" onclick="showRemplaceVendeurModal('${ac}','${esc(mag.nom)}','${esc(v.nom)}')">🔄 Remplacer</button>
+        <button class="btn btn-sm btn-danger" onclick="doRemoveVendeur('${ac}','${esc(mag.nom)}','${esc(v.nom)}')">×</button>
+      </div></div>`;
+    if(!isP){
+      h+=`<div class="mgrid">`;
+      months.forEach(m=>{
+        const formuleMois=getFormuleMois(comp,year,m,mag);const augm=formuleMois.augmentation||2;
+        const obj=v.objSheetAuto?.[m]??v.objManuel?.[m]??calcObj(ca25,augm,m);const ca=v.caSheetAuto?.[m]??v.caSaisie?.[m];
+        const taux=ca!=null?(ca/obj)*100:null;const primeMagM=calcPrime(taux,comp.paliers||[]);const volPrimeM=getStoreTotalVolantPrimeMois(S.activeComp,comp,mag,ca25,m,year);const prime=Math.round(Math.max(0,primeMagM-volPrimeM)/nActifs*100)/100;const c=tc(taux);
+        const w=S.mois!=='all'?' wide':'';
+        h+=`<div class="mc${w} ${c?'bg-'+c:''}">
+          <div class="mc-lbl">${MS[m]}</div>
+          <div class="mc-obj">Obj: ${fmt(obj)} <span style="font-size:8px;cursor:pointer;color:var(--acc)" onclick="showObjModal('${ac}','${esc(mag.nom)}','${esc(v.nom)}',${m},${obj})">✏️</span></div>
+          <input type="number" placeholder="CA réalisé" value="${ca!=null?ca:''}" onchange="doSaveCA('${ac}','${esc(mag.nom)}','${esc(v.nom)}',${m},this.value)"/>
+          ${taux!=null?`<div class="mc-res"><span class="tx-${c}">${taux.toFixed(1)}%</span><span style="color:${prime>0?'var(--grn)':'var(--tx3)'}">${fmtPrime(prime)}</span></div>`:''}
+        </div>`;});
+      if(S.mois!=='all'){const mi2=parseInt(S.mois);
+        const vJs=(S.volantJours||[]).filter(vj=>vj.societe===S.activeComp&&vj.magasin===mag.nom&&vj.mois===mi2);
+        if(vJs.length)h+=`<div style="width:100%;margin-top:4px;font-size:10px;color:var(--vol);background:#f5f3ff;padding:4px 8px;border-radius:6px">🔄 Volants : ${vJs.map(vj=>`<b>${vj.volant}</b> (${vj.jours}j)`).join(', ')}</div>`;}
+      h+='</div>';
+    }else h+=`<div style="font-size:11px;color:var(--tx3);padding:4px 0;font-style:italic">Vendeur parti — données conservées.</div>`;
+    h+='</div>';});
+  h+=`<div style="padding:8px 16px"><button class="btn btn-sm" style="background:#f8fafc;border:1px dashed var(--brd);color:var(--tx2)"
+    onclick="showAddVendeurModal('${ac}','${esc(mag.nom)}')">+ Ajouter un vendeur fixe</button></div></div>`;
+  return h;}
+
+function renderVolSection(comp){
+  const ac=esc(S.activeComp);
+  let h=`<div class="vol-section"><div class="vol-section-hd"><div class="vol-section-title">🔄 Vendeurs Volants</div>
+    <button class="btn btn-sm" style="background:#fff;border:1px solid #ddd6fe;color:var(--vol)" onclick="showAddVolantModal('${ac}')">+ Ajouter volant</button></div>
+    <div class="vol-section-desc">Les volants remplacent des fixes absents. Affectez-les par magasin et par mois.</div>`;
+  if(!(comp.volants||[]).length)h+=`<div style="font-size:12px;color:var(--tx3)">Aucun volant pour cette société.</div>`;
+  else{
+    // Filtrer les volants partis (ne les afficher que dans le récap)
+    const volantsActifs = (comp.volants||[]).filter(v => !v.parti);
+    
+    if(!volantsActifs.length){
+      h+=`<div style="font-size:12px;color:var(--tx3)">Tous les volants ont quitté l'entreprise. Consultez le Récapitulatif pour les voir.</div>`;
+    } else {
+      h+=`<div class="vol-chips">`;
+      volantsActifs.forEach(v=>{h+=`<div class="vol-chip">
+        <span class="badge-vol">VOL</span><b>${v.nom}</b>
+        <span style="color:var(--tx3);font-size:10px">2025: ${fmtE(v.p25)}</span>
+        <button style="background:none;border:none;color:#a78bfa;font-size:14px;cursor:pointer" onclick="doRemoveVolant('${ac}','${esc(v.nom)}')">×</button>
+        </div>`;});h+=`</div>`;
+    }
+    
+    if(S.mois!=='all'){
+      const mIdx=parseInt(S.mois);const actVols=(comp.volants||[]).filter(v=>!v.parti);
+      const cn=S.activeComp;const year=S.selectedYear||2025;
+      // Helper : prime d'un volant dans un magasin pour ce mois
+      const primVolMag=(volNom,mag)=>{
+        const magCa25=mag.totalCA2025||100000;
+        const firstV=mag.vendeurs[0];if(!firstV)return 0;
+        const storeCa=firstV.caSheetAuto?.[mIdx]??firstV.caSaisie?.[mIdx];
+        if(!storeCa||storeCa<=0)return 0;
+        const fmois=getFormuleMois(comp,year,mIdx);const augm=fmois.augmentation||2;
+        const storeObj=firstV.objSheetAuto?.[mIdx]??firstV.objManuel?.[mIdx]??calcObj(magCa25,augm,mIdx);
+        const primeMag=calcPrime((storeCa/storeObj)*100,comp.paliers||[]);
+        if(primeMag<=0)return 0;
+        const vc=(S.volantCA||[]).find(x=>x.societe===cn&&x.volant===volNom&&x.magasin===mag.nom&&x.mois===mIdx);
+        if(!vc||!vc.ca||vc.ca<=0)return 0;
+        return Math.round((vc.ca/storeCa)*primeMag);
+      };
+      h+=`<div style="font-size:11px;font-weight:700;color:var(--vol);margin-bottom:8px">Affectations — ${M[mIdx]} :</div>`;
+      filterNormalMagasins(comp.magasins).forEach(mag=>{
+        const magCa25=mag.totalCA2025||100000;
+        const firstV=mag.vendeurs[0];
+        const storeCa=firstV?(firstV.caSheetAuto?.[mIdx]??firstV.caSaisie?.[mIdx]):null;
+        const fmoisV=getFormuleMois(comp,year,mIdx);const augmV=fmoisV.augmentation||2;
+        const storeObj=firstV?(firstV.objSheetAuto?.[mIdx]??firstV.objManuel?.[mIdx]??calcObj(magCa25,augmV,mIdx)):calcObj(magCa25,augmV,mIdx);
+        const storeTaux=storeCa!=null?(storeCa/storeObj)*100:null;
+        const cMag=tc(storeTaux);
+        h+=`<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;color:var(--tx2);margin-bottom:6px">📍 ${mag.nom}</div><div class="mgrid">`;
+        actVols.forEach(v=>{
+          const vc=(S.volantCA||[]).find(x=>x.societe===cn&&x.volant===v.nom&&x.magasin===mag.nom&&x.mois===mIdx);
+          const caVol=vc?vc.ca:null;
+          const prime=primVolMag(v.nom,mag);
+          const participation=caVol!=null&&storeCa>0?(caVol/storeCa)*100:null;
+          h+=`<div class="mc wide ${cMag?'bg-'+cMag:''}">
+            <div class="mc-lbl" style="color:var(--vol)">${v.nom.split(' ')[0]}</div>
+            <input type="number" placeholder="CA volant" value="${caVol!=null?caVol:''}" onchange="doSaveVolantCA('${ac}','${esc(v.nom)}','${esc(mag.nom)}',${mIdx},this.value)"/>
+            ${caVol!=null?`<div class="mc-res"><span class="tx-${cMag}">${participation!=null?participation.toFixed(1)+'%':''}</span><span style="color:${prime>0?'var(--grn)':'var(--tx3)'}">${fmtPrime(prime)}</span></div>`:''}
+          </div>`;});
+        h+=`</div></div>`;});
+      // Total mensuel par volant
+      h+=`<div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:10px 14px;margin-top:8px">
+        <div style="font-size:11px;font-weight:700;color:var(--vol);margin-bottom:8px">Total prime — ${M[mIdx]}</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">`;
+      actVols.forEach(v=>{
+        const total=getVolantTotalPrimeMois(cn,comp,v,mIdx,year);
+        h+=`<div style="background:#fff;border:1px solid #ddd6fe;border-radius:6px;padding:6px 12px;text-align:center">
+          <div style="font-size:10px;color:var(--vol);font-weight:700">${v.nom.split(' ')[0]}</div>
+          <div style="font-size:16px;font-weight:800;color:${total>0?'var(--grn)':'var(--tx3)'}">${fmtPrime(total)}</div>
+        </div>`;});
+      h+=`</div></div>`;}
+    else h+=`<div style="font-size:11px;color:var(--tx3);margin-top:4px">👆 Sélectionnez un mois pour gérer les affectations par magasin.</div>`;}
+  return h+'</div>';}
+
+function renderPartisSection(comp, companyName){
+  // Collecter tous les vendeurs partis (fixes et volants)
+  const partis = [];
+  for(const mag of comp.magasins){
+    for(const v of mag.vendeurs){
+      if(v.parti){
+        partis.push({nom: v.nom, p25: v.p25, magasinOrigine: mag.nom, type: 'fixe'});
+      }
+    }
+  }
+  for(const vl of (comp.volants||[])){
+    if(vl.parti){
+      partis.push({nom: vl.nom, p25: vl.p25, magasinOrigine: 'Volant', type: 'volant'});
+    }
+  }
+  
+  if(!partis.length) return '';
+  
+  const ac=esc(companyName || S.activeComp);
+  let h=`<div class="vol-section" style="border-top:2px solid #fee2e2;background:#fef2f2;margin-top:24px">
+    <div class="vol-section-hd" style="background:#fef2f2">
+      <div class="vol-section-title" style="color:var(--red)">🚪 Vendeurs partis</div>
+      <span style="font-size:11px;color:#991b1b">${partis.length} vendeur(s) ayant quitté l'entreprise</span>
+    </div>
+    <div class="vol-section-desc" style="color:#991b1b">Ces vendeurs ont quitté l'entreprise. Leurs données sont conservées mais n'impactent plus les calculs. Vous pouvez les supprimer définitivement.</div>
+    <div class="vol-chips" style="background:#fff">`;
+  
+  partis.forEach(v=>{
+    const badge = v.type === 'volant' ? '<span class="badge-vol">VOL</span>' : '<span class="badge-fixe">FIXE</span>';
+    h+=`<div class="vol-chip parti-vend" style="border:1px solid #fca5a5">
+      ${badge}<b>${v.nom}</b>
+      <span style="color:var(--tx3);font-size:10px">${v.magasinOrigine} · ${fmtE(v.p25)} (2025)</span>
+      <span class="badge-parti">PARTI</span>
+      <button class="btn btn-sm btn-danger" style="font-size:10px;padding:3px 8px" onclick="if(confirm('Supprimer définitivement ${esc(v.nom)} ? Cette action est irréversible.'))doDeleteVendeur('${ac}','${esc(v.nom)}')">🗑️ Supprimer</button>
+    </div>`;
+  });
+  
+  return h+`</div></div>`;
+}
+
+// ══════ PAGE VENDEURS & MAGASINS ══════
+function p25Bar(){
+  const tot={};let g=0;
+  for(const[cn,comp]of Object.entries(S.data.companies)){tot[cn]=0;
+    for(const mag of comp.magasins)for(const v of mag.vendeurs)tot[cn]+=v.p25||0;g+=tot[cn];}
+  let h=`<div class="p25-bar"><div class="p25-bar-title">Total primes 2025 par société</div><div class="p25-cards">`;
+  for(const[cn,t]of Object.entries(tot))h+=`<div class="p25-card"><small>${cn}</small><b>${fmtE(t)}</b></div>`;
+  return h+`<div class="p25-card p25-card-total"><small>🏆 Total général</small><b>${fmtE(g)}</b></div></div></div>`;}
+
+function renderVendeursPage(){
+  const subTabs=`<div class="nav-tabs" style="margin-bottom:0">
+    <button class="tab ${S.subTab==='fixes'?'on':''}" onclick="S.subTab='fixes';render()">🏪 Vendeurs Fixes</button>
+    <button class="tab ${S.subTab==='volants'?'vol-on':''}" onclick="S.subTab='volants';render()">🔄 Vendeurs Volants</button>
+    <button class="tab ${S.subTab==='magasins'?'on':''}" onclick="S.subTab='magasins';render()">🏬 Magasins</button>
+  </div>`;
+  let content='';
+  if(S.subTab==='fixes')content=renderFixedListPanel();
+  else if(S.subTab==='volants')content=renderVolantListPanel();
+  else content=renderMagasinPanel();
+  return p25Bar()+`<div class="list-panel"><div style="padding:12px 16px;border-bottom:1px solid #f1f5f9">${subTabs}</div>${content}</div>`;}
+
+function collectFixed(){
+  const all=[];
+  const year=S.selectedYear||2025;
+  for(const[cn,comp]of Object.entries(S.data.companies)){
+    for(const mag of comp.magasins){const ca25=mag.totalCA2025||100000;
+      const nActifs=mag.vendeurs.filter(v=>!v.parti).length||1;
+      for(const v of mag.vendeurs){let tp=0;
+        for(let m=0;m<12;m++){const ca=v.caSaisie?.[m]??v.caSheet?.[m];if(ca==null)continue;
+          const formuleMois=getFormuleMois(comp,year,m,mag);const augm=formuleMois.augmentation||2;
+          const obj=v.objSheet?.[m]||v.objManuel?.[m]||calcObj(ca25,augm,m);const primeMagC=calcPrime((ca/obj)*100,comp.paliers||[]);const volPrimeC=getStoreTotalVolantPrimeMois(cn,comp,mag,ca25,m,year);tp+=Math.round(Math.max(0,primeMagC-volPrimeC)/nActifs*100)/100;}
+        all.push({nom:v.nom,societe:cn,magasin:mag.nom,manager:mag.manager||comp.manager||'',parti:!!v.parti,p26:tp,p25:v.p25||0});}}}
+  return all;}
+
+function filterSort(all,search,filter,isVol=false){
+  let f=all.filter(v=>{
+    if(filter==='actif'&&v.parti)return false;if(filter==='parti'&&!v.parti)return false;
+    if(search)return v.nom.toLowerCase().includes(search)||v.societe.toLowerCase().includes(search)||(v.magasin||'').toLowerCase().includes(search)||(v.manager||'').toLowerCase().includes(search);
+    return true;});
+  f.sort((a,b)=>{if(a.parti&&!b.parti)return 1;if(!a.parti&&b.parti)return-1;return a.nom.localeCompare(b.nom,'fr');});
+  return f;}
+
+function buildFixRows(rows){
+  if(!rows.length)return`<div class="list-empty">Aucun vendeur fixe trouvé.</div>`;
+  return rows.map(v=>{const d=v.p26-v.p25;const dS=d===0?'':(d>0?`<span style="color:var(--red);font-size:10px">▲${fmtE(Math.abs(d))}</span>`:`<span style="color:var(--grn);font-size:10px">▼${fmtE(Math.abs(d))}</span>`);
+    return`<div class="vrow${v.parti?' parti-row':''}">
+      <div class="vrow-left"><div class="vrow-av${v.parti?' parti':''}">${ini(v.nom)}</div>
+        <div class="vrow-info">
+          <div class="vrow-nom">${v.nom} <span class="badge-fixe">FIXE</span>${v.parti?' <span class="badge-parti">PARTI</span>':''}</div>
+          <div class="vrow-meta">${v.societe} · ${v.magasin}${v.manager?' · 👤 '+v.manager:''}</div>
+        </div></div>
+      <div class="vrow-right"><div>
+        <div style="font-weight:800;font-size:13px">${fmtE(v.p26)}</div>
+        <div style="font-size:10px;color:var(--tx3)">2025 : ${fmtE(v.p25)} ${dS}</div>
+      </div></div></div>`;}).join('');}
+
+function renderFixedListPanel(){
+  const search=(S.fixSearch||'').toLowerCase().trim();const filter=S.fixFilter||'actif';
+  const all=collectFixed();const rows=filterSort(all,search,filter);
+  const total=rows.filter(v=>!v.parti).reduce((s,v)=>s+v.p26,0);
+  return`<div class="list-ph">
+    <div><div class="list-ph-title">Vendeurs Fixes</div><div class="list-ph-sub">${rows.length} vendeur(s) · 2026 sim : ${fmtE(total)}</div></div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <div class="search-wrap"><input placeholder="Nom, société, magasin, manager..." value="${esc(S.fixSearch||'')}" oninput="S.fixSearch=this.value;updateFixList()"/></div>
+      <div class="fbtn-row">
+        <button class="fbtn ${filter==='all'?'on':''}" onclick="S.fixFilter='all';render()">Tous</button>
+        <button class="fbtn ${filter==='actif'?'on':''}" onclick="S.fixFilter='actif';render()">Actifs</button>
+        <button class="fbtn ${filter==='parti'?'on':''}" onclick="S.fixFilter='parti';render()">Partis</button>
+      </div></div></div>
+  <div id="fix-list-body">${buildFixRows(rows)}</div>`;}
+
+function renderVolantListPanel(){
+  const search=(S.volSearch||'').toLowerCase().trim();const filter=S.volFilter||'actif';
+  const all=[];
+  for(const[cn,comp]of Object.entries(S.data.companies)){
+    for(const v of (comp.volants||[])){
+      const jours=(S.volantJours||[]).filter(vj=>vj.societe===cn&&vj.volant===v.nom).reduce((s,vj)=>s+vj.jours,0);
+      const mags=[...new Set((S.volantJours||[]).filter(vj=>vj.societe===cn&&vj.volant===v.nom).map(vj=>vj.magasin))];
+      all.push({nom:v.nom,societe:cn,manager:comp.manager||'',parti:!!v.parti,p25:v.p25||0,jours,mags});}}
+  const rows=filterSort(all,search,filter,true);
+  const rowsH=rows.length?rows.map(v=>`<div class="vrow${v.parti?' parti-row':''}">
+    <div class="vrow-left"><div class="vrow-av vol${v.parti?' parti':''}">${ini(v.nom)}</div>
+      <div class="vrow-info">
+        <div class="vrow-nom">${v.nom} <span class="badge-vol">VOLANT</span>${v.parti?' <span class="badge-parti">PARTI</span>':''}</div>
+        <div class="vrow-meta">${v.societe}${v.manager?' · 👤 '+v.manager:''}</div>
+        <div class="vrow-meta2">📍 ${v.mags.length?v.mags.join(', '):'Aucune affectation'} · ${v.jours}j affectés</div>
+      </div></div>
+    <div class="vrow-right"><div>
+      <div style="font-weight:800;font-size:13px;color:var(--vol)">${fmtE(v.p25)}</div>
+      <div style="font-size:10px;color:var(--tx3)">Primes 2025</div>
+    </div></div></div>`).join(''):`<div class="list-empty">Aucun volant trouvé.</div>`;
+  return`<div class="list-ph">
+    <div><div class="list-ph-title" style="color:var(--vol)">Vendeurs Volants</div><div class="list-ph-sub">${rows.length} volant(s)</div></div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <div class="search-wrap"><input placeholder="Nom, société, magasin..." value="${esc(S.volSearch||'')}" oninput="S.volSearch=this.value;updateVolList()"/></div>
+      <div class="fbtn-row">
+        <button class="fbtn ${filter==='all'?'vol-on':''}" onclick="S.volFilter='all';render()">Tous</button>
+        <button class="fbtn ${filter==='actif'?'vol-on':''}" onclick="S.volFilter='actif';render()">Actifs</button>
+        <button class="fbtn ${filter==='parti'?'vol-on':''}" onclick="S.volFilter='parti';render()">Partis</button>
+      </div></div></div>
+  <div id="vol-list-body">${rowsH}</div>`;}
+
+function renderMagasinPanel(){
+  const allMags=[];
+  for(const[cn,comp]of Object.entries(S.data.companies)){
+    for(const mag of filterNormalMagasins(comp.magasins)){
+      allMags.push({nom:mag.nom,societe:cn,manager:mag.manager||comp.manager||'',ca25:mag.totalCA2025||0,
+        nV:mag.vendeurs.filter(v=>!v.parti).length,nP:mag.vendeurs.filter(v=>v.parti).length});}
+  }
+  allMags.sort((a,b)=>a.societe.localeCompare(b.societe,'fr')||a.nom.localeCompare(b.nom,'fr'));
+  const bySoc={};for(const m of allMags){if(!bySoc[m.societe])bySoc[m.societe]=[];bySoc[m.societe].push(m);}
+  let h=`<div class="list-ph"><div><div class="list-ph-title">Tous les magasins</div><div class="list-ph-sub">${allMags.length} magasins</div></div></div>`;
+  for(const[soc,mags]of Object.entries(bySoc)){
+    const comp=S.data.companies[soc];const mgr=comp?.manager||'';
+    h+=`<div style="padding:14px 16px 0">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+        <div><div style="font-weight:800;font-size:14px">${soc}</div>
+          <div style="font-size:11px;color:var(--tx3)">👤 Manager : <b>${mgr||'Non renseigné'}</b> · ${mags.length} magasin(s)</div>
+        </div>
+        <button class="btn btn-sm" style="background:#f8fafc;border:1px solid var(--brd);color:var(--tx2)" onclick="showAddMagModal('${esc(soc)}')">+ Magasin</button>
+      </div>
+      <div class="mag-grid">`;
+    mags.forEach(m=>{h+=`<div class="mag-card">
+      <div class="mag-card-name">🏬 ${m.nom}</div>
+      <div class="mag-card-stats">
+        <span class="mag-card-stat">CA : ${fmtE(m.ca25)}</span>
+        <span class="mag-card-stat">${m.nV} vendeur(s)</span>
+        ${m.nP?`<span class="mag-card-stat" style="color:var(--red)">${m.nP} parti(s)</span>`:''}
+      </div>
+      <div class="mag-card-btns">
+        <button class="btn btn-sm" style="background:#f8fafc;border:1px solid var(--brd);color:var(--tx2)" onclick="showEditMagModal('${esc(soc)}','${esc(m.nom)}')">✏️</button>
+        <button class="btn btn-sm btn-danger" onclick="doRemoveMag('${esc(soc)}','${esc(m.nom)}')">Suppr.</button>
+      </div></div>`;});
+    h+=`</div></div><hr style="border:none;border-top:1px solid var(--brd);margin:0 16px">`;}
+  return h;}
+
+// ══════ RECAP PAR SOCIÉTÉ ══════
+// Modes : 'annuel' = vue synthèse | 'mensuel' = vue RH mois par mois
+// S.recapMode et S.recapMois pour navigation
+
+function renderRecap(){
+  // ── Calcul global avec données mensuelles ──
+  const year=S.selectedYear||2025;
+  const socData={};let gYear=0;
+  const grandMois=new Array(12).fill(0);
+  
+  for(const[cn,comp]of Object.entries(S.data.companies)){
+    const sd={name:cn,manager:comp.manager||'',magasins:[],
+      totalYear:0,total25:0,total26:0,primesParMois:new Array(12).fill(0),
+      nVend:0,nParti:0,nVolants:(comp.volants||[]).filter(v=>!v.parti).length};
+    
+    for(const mag of comp.magasins){
+      const ca25=mag.totalCA2025||100000;
+      const nActifs=mag.vendeurs.filter(v=>!v.parti).length||1;
+      const md={nom:mag.nom,manager:mag.manager||comp.manager||'',ca25,vendeurs:[],totalYear:0,primesParMois:new Array(12).fill(0)};
+
+      for(const v of mag.vendeurs){
+        let tp=0,mc=0;const pm=new Array(12).fill(0);
+        for(let m=0;m<12;m++){
+          const formuleMois=getFormuleMois(comp,year,m,mag);
+          const augm=formuleMois.augmentation||2;
+          const ca=v.caSheetAuto?.[m]??v.caSaisie?.[m]??v.caSheet?.[m];
+          const obj=v.objSheetAuto?.[m]??v.objManuel?.[m]??calcObj(ca25,augm,m);
+          if(ca!=null){mc++;const primeMagR=calcPrime((ca/obj)*100,comp.paliers||[]);const volPrimeR=getStoreTotalVolantPrimeMois(cn,comp,mag,ca25,m,year);const pr=Math.round(Math.max(0,primeMagR-volPrimeR)/nActifs*100)/100;tp+=pr;pm[m]=pr;}}
+        
+        md.vendeurs.push({nom:v.nom,p25:v.p25||0,p26:tp,pm,months:mc,parti:!!v.parti});
+        if(!v.parti){md.totalYear+=tp;for(let m=0;m<12;m++)md.primesParMois[m]+=pm[m];}
+        if(!v.parti){sd.totalYear+=tp;sd.total26+=tp;sd.total25+=(v.p25||0);for(let m=0;m<12;m++)sd.primesParMois[m]+=pm[m];}
+        sd.nVend+=(v.parti?0:1);sd.nParti+=(v.parti?1:0);
+        if(!v.parti){gYear+=tp;for(let m=0;m<12;m++)grandMois[m]+=pm[m];}}
+      
+      sd.magasins.push(md);}
+    
+    // ══ AJOUTER LES PRIMES DES VOLANTS ═══════════════════════════════
+    for(const vl of (comp.volants||[])){
+      if(!vl.parti){
+        let p=0;for(let m=0;m<12;m++)p+=getVolantTotalPrimeMois(cn,comp,vl,m,year);
+        sd.totalYear+=p;sd.total26+=p;
+        gYear+=p;
+      }
+    }
+    // ═══════════════════════════════════════════════════════════════════
+    
+    socData[cn]=sd;}
+
+  const mode=S.recapMode||'annuel';
+  const moisSel=S.recapMois??null;
+
+  // ── Bandeau global (toujours affiché) ──
+  let h=`<div class="p25-bar"><div class="p25-bar-title">Synthèse globale — toutes sociétés</div><div class="p25-cards">`;
+  for(const sd of Object.values(socData)){
+    h+=`<div class="p25-card" style="cursor:pointer" onclick="document.getElementById('soc-${esc(sd.name)}')?.scrollIntoView({behavior:'smooth'})">
+      <small>${sd.name}</small><b>${fmtE(sd.totalYear)}</b>
+      <sub>Primes ${year}</sub>
+    </div>`;}
+  h+=`<div class="p25-card p25-card-total"><small>🏆 Total ${year}</small><b>${fmtE(gYear)}</b></div></div></div>`;
+
+  // ── Sélecteur de mode ──
+  h+=`<div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+    <button class="tab ${mode==='annuel'?'on':''}" onclick="S.recapMode='annuel';render()">📊 Vue annuelle</button>
+    <button class="tab ${mode==='mensuel'?'on':''}" onclick="S.recapMode='mensuel';S.recapMois=S.recapMois??0;render()">📅 Vue mensuelle RH</button>
+    ${mode==='mensuel'?`<div style="display:flex;gap:3px;flex-wrap:wrap;margin-left:8px">
+      ${MS.map((m,i)=>`<button class="mt ${moisSel===i?'on':''}" onclick="S.recapMois=${i};render()">${m}</button>`).join('')}
+    </div>`:''}
+  </div>`;
+  
+  // ── Onglets sociétés pour vue annuelle ──
+  if(mode==='annuel'){
+    const socNames=Object.keys(socData);
+    const selSoc=S.recapAnnuelSoc||'all';
+    h+=`<div class="rh-tabs">
+      <button class="rh-tab ${selSoc==='all'?'all-on':''}" onclick="S.recapAnnuelSoc='all';render()">🌐 Toutes</button>
+      ${socNames.map(cn=>`<button class="rh-tab ${selSoc===cn?'on':''}" onclick="S.recapAnnuelSoc='${esc(cn)}';render()">${cn}</button>`).join('')}
+    </div>`;
+  }
+
+  if(mode==='annuel'){
+    h+=renderRecapAnnuel(socData,year,S.recapAnnuelSoc||'all');
+  } else {
+    const mIdx=moisSel??0;
+    h+=renderRecapMensuel(socData,year,mIdx,grandMois);
+  }
+
+  // ── Grand total bar ──
+  h+=`<div style="background:linear-gradient(135deg,#0f172a,#1e293b);border-radius:14px;padding:16px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;color:#fff;margin-bottom:16px">
+    <div style="font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:1px">🏆 Grand Total — Toutes sociétés</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <div style="background:#ffffff12;border-radius:10px;padding:8px 20px;text-align:center">
+        <div style="font-size:9px;opacity:.4;text-transform:uppercase;letter-spacing:1px">Total primes ${year}</div>
+        <div style="font-size:22px;font-weight:800">${fmtE(gYear)}</div>
+      </div>
+    </div>
+  </div>`;
+  return h;
+}
+
+// ── Vue annuelle : un bloc par société, vendeurs en lignes, total annuel ──
+function renderRecapAnnuel(socData,year,selectedSoc='all'){
+  let h='';
+  const societes = selectedSoc === 'all' ? Object.entries(socData) : [[selectedSoc, socData[selectedSoc]]].filter(([k,v])=>v);
+  
+  for(const[cn,sd]of societes){
+    const ecart=sd.total26-sd.total25;
+    h+=`<div class="mag" id="soc-${esc(cn)}" style="margin-bottom:16px">
+      <div class="mag-h" style="background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff">
+        <div>
+          <div style="font-size:9px;text-transform:uppercase;letter-spacing:2px;opacity:.4;margin-bottom:2px">Société</div>
+          <div style="font-weight:800;font-size:16px">${cn}</div>
+          <div style="font-size:10px;opacity:.5;margin-top:2px">👤 ${sd.manager||'—'} · ${filterNormalMagasins(sd.magasins).length} magasin(s) · ${sd.nVend} actif(s)${sd.nParti?' · <span style="color:#fca5a5">'+sd.nParti+' parti(s)</span>':''} · ${sd.nVolants} volant(s)</div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <div style="background:#ffffff12;border-radius:10px;padding:8px 14px;text-align:center">
+            <div style="font-size:9px;opacity:.4;text-transform:uppercase;letter-spacing:1px">Primes ${year}</div>
+            <div style="font-size:17px;font-weight:800">${fmtE(sd.totalYear)}</div>
+          </div>
+        </div>
+      </div>
+      <div style="overflow-x:auto"><table class="rtbl">
+        <thead><tr style="background:#f8fafc">
+          <th style="padding-left:16px">Vendeur</th>
+          <th>Magasin</th>
+          <th class="r">Primes 2025</th>
+          <th class="r">Mois saisis</th>
+          <th class="r">Simulé ${year}</th>
+          <th class="r">Écart</th>
+        </tr></thead><tbody>`;
+    for(const md of sd.magasins){
+      md.vendeurs.filter(v => !v.parti).forEach(v=>{
+        const d=v.p26-v.p25;const cl=d>0?'var(--red)':d<0?'var(--grn)':'var(--tx3)';const ar=d>0?'▲':d<0?'▼':'';
+        h+=`<tr>
+          <td style="padding:7px 12px 7px 16px;font-size:12px">${v.nom} <span class="badge-fixe">FIXE</span></td>
+          <td style="font-size:11px;color:var(--tx3)">${md.nom}</td>
+          <td class="r" style="color:var(--tx3)">${fmtE(v.p25)}</td>
+          <td class="r" style="color:var(--tx3)">${v.months}/12</td>
+          <td class="r" style="font-weight:800">${fmtE(v.p26)}</td>
+          <td class="r" style="font-weight:600;color:${cl}">${ar+' '+fmtE(Math.abs(d))}</td>
+        </tr>`;
+      });
+    }
+    
+    // ══ AJOUTER LES VOLANTS ACTIFS UNIQUEMENT ══════════════════════════════════════════
+    const comp=S.data.companies[cn];
+    if(comp&&comp.volants&&comp.volants.length>0){
+      const volantsActifs = comp.volants.filter(vl => !vl.parti);
+      
+      if(volantsActifs.length > 0){
+        h+=`<tr style="background:#f5f3ff">
+          <td colspan="2" style="padding:8px 12px 8px 16px;font-size:12px;font-weight:700;color:var(--vol)">🔄 <b>Vendeurs Volants</b></td>
+          <td class="r" style="color:var(--tx3)">—</td>
+          <td class="r" style="color:var(--tx3)">—</td>
+          <td class="r" style="color:var(--tx3)">—</td>
+          <td class="r" style="color:var(--tx3)">—</td>
+        </tr>`;
+        
+        volantsActifs.forEach(vl=>{
+          const p25=vl.p25||0;
+          let p26=0;const pm26=new Array(12).fill(0);
+          for(let m=0;m<12;m++){pm26[m]=getVolantTotalPrimeMois(cn,comp,vl,m,year);p26+=pm26[m];}
+          const moisSaisis=pm26.filter(p=>p>0).length;
+          const d=p26-p25;
+          const cl=d>0?'var(--red)':d<0?'var(--grn)':'var(--tx3)';
+          const ar=d>0?'▲':d<0?'▼':'';
+          
+          h+=`<tr>
+            <td style="padding:7px 12px 7px 32px;font-size:12px">${vl.nom} <span class="badge-vol">VOLANT</span></td>
+            <td style="font-size:11px;color:var(--vol)">Multi-magasins</td>
+            <td class="r" style="color:var(--tx3)">${fmtE(p25)}</td>
+            <td class="r" style="color:var(--tx3)">${moisSaisis}/12</td>
+            <td class="r" style="font-weight:800">${fmtE(p26)}</td>
+            <td class="r" style="font-weight:600;color:${cl}">${ar+' '+fmtE(Math.abs(d))}</td>
+          </tr>`;
+        });
+      }
+    }
+    // ═══════════════════════════════════════════════════════════════
+    h+=`<tr style="background:#0f172a;color:#fff;font-weight:800">
+      <td colspan="2" style="padding:10px 12px 10px 16px">TOTAL ${cn.toUpperCase()}</td>
+      <td class="r">${fmtE(sd.total25)}</td><td></td>
+      <td class="r" style="font-size:14px">${fmtE(sd.total26)}</td>
+      <td class="r" style="color:${ecart>=0?'#f87171':'#86efac'}">${ecart>=0?'▲':'▼'} ${fmtE(Math.abs(ecart))}</td>
+    </tr></tbody></table></div>`;
+    
+    // Ajouter section vendeurs partis (comp déjà déclaré ligne 1014)
+    if(comp){
+      const partisHTML = renderPartisSection(comp, cn);
+      if(partisHTML){
+        h += partisHTML;
+      }
+    }
+    
+    h+='</div>';
+  }
+  return h;}
+
+// ── Vue mensuelle RH : onglets par société + filtre de recherche ──
+function renderRecapMensuel(socData,year,moisSel,grandMois){
+  const socNames=Object.keys(socData);
+  const selSoc=S.rhSocTab||'all';
+  const srch=(S.recapSearch||'').toLowerCase().trim();
+
+  // Onglets sociétés
+  let h=`<div class="rh-tabs">
+    <button class="rh-tab ${selSoc==='all'?'all-on':''}" onclick="S.rhSocTab='all';render()">🌐 Toutes</button>
+    ${socNames.map(cn=>`<button class="rh-tab ${selSoc===cn?'on':''}" onclick="S.rhSocTab='${esc(cn)}';render()">${cn}</button>`).join('')}
+  </div>`;
+
+  // Barre recherche locale RH
+  h+=`<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+    <div class="gsearch-wrap" style="max-width:320px">
+      <input class="gsearch-input" placeholder="Filtrer vendeur, magasin..." value="${esc(S.recapSearch||'')}"
+        oninput="S.recapSearch=this.value;renderRhBody()"/>
+    </div>
+    ${srch?`<button class="gsearch-clear" onclick="S.recapSearch='';render()">✕ Effacer</button>
+    <span class="gsearch-hits">Filtre actif : <b>${srch}</b></span>`:''}
+  </div>`;
+
+  // Sociétés à afficher
+  const toShow=selSoc==='all'?socNames:[selSoc];
+
+  h+=`<div id="rh-body">${buildRhBody(socData,year,moisSel,toShow,srch)}</div>`;
+
+  // Grand total mensuel (toujours toutes sociétés)
+  h+=`<div style="background:linear-gradient(90deg,#1e3a5f,#1e293b);border-radius:14px;padding:14px 20px;margin-bottom:16px;overflow-x:auto">
+    <div style="font-size:11px;font-weight:800;color:#93c5fd;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">GRAND TOTAL MENSUEL — toutes sociétés</div>
+    <div style="display:flex;gap:6px;flex-wrap:nowrap;min-width:max-content">
+      ${grandMois.map((p,i)=>`<div style="background:${i===moisSel?'#3b82f6':'#ffffff14'};border-radius:10px;padding:8px 12px;text-align:center;min-width:80px;cursor:pointer;border:${i===moisSel?'1px solid #60a5fa':'1px solid transparent'}" onclick="S.recapMois=${i};render()">
+        <div style="font-size:9px;font-weight:700;color:${i===moisSel?'#fff':'rgba(255,255,255,.4)'};text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">${MS[i]}</div>
+        <div style="font-size:14px;font-weight:800;color:${i===moisSel?'#fff':p>0?'#e2e8f0':'rgba(255,255,255,.25)'}">${p>0?fmtE(p):'—'}</div>
+      </div>`).join('')}
+      <div style="background:#ffffff22;border-radius:10px;padding:8px 14px;text-align:center;min-width:90px;border:1px solid #ffffff33">
+        <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">TOTAL ${year}</div>
+        <div style="font-size:15px;font-weight:800;color:#fff">${fmtE(grandMois.reduce((s,v)=>s+v,0))}</div>
+      </div>
+    </div>
+  </div>`;
+
+  return h;
+}
+
+function buildRhBody(socData,year,moisSel,toShow,srch){
+  let h='';
+  for(const cn of toShow){
+    const sd=socData[cn];if(!sd)continue;
+    const totalMoisSoc=sd.primesParMois[moisSel];
+
+    // Filtrage vendeurs selon recherche
+    const magsFiltered=sd.magasins.map(md=>{
+      const vActifs=md.vendeurs.filter(v=>!v.parti&&(!srch||v.nom.toLowerCase().includes(srch)||md.nom.toLowerCase().includes(srch)||cn.toLowerCase().includes(srch)));
+      const vPartis=md.vendeurs.filter(v=>v.parti&&(!srch||v.nom.toLowerCase().includes(srch)));
+      return{...md,vActifs,vPartis,visible:vActifs.length>0||vPartis.length>0};
+    }).filter(md=>md.visible);
+
+    if(magsFiltered.length===0){
+      h+=`<div style="padding:16px;color:var(--tx3);font-size:13px;text-align:center;background:var(--card);border-radius:12px;margin-bottom:10px">Aucun vendeur trouvé pour « ${srch} » dans ${cn}</div>`;
+      continue;}
+
+    h+=`<div class="mag" style="margin-bottom:14px">
+      <div class="mag-h" style="background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff">
+        <div>
+          <div style="font-size:9px;text-transform:uppercase;letter-spacing:2px;opacity:.4;margin-bottom:2px">Fiches de paie — ${M[moisSel]} 2026</div>
+          <div style="font-weight:800;font-size:16px">${cn}</div>
+          <div style="font-size:10px;opacity:.5;margin-top:2px">👤 ${sd.manager||'—'} · ${sd.nVend} vendeur(s) actif(s)</div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <div style="background:#3b82f622;border:1px solid #3b82f644;border-radius:10px;padding:8px 14px;text-align:center">
+            <div style="font-size:9px;opacity:.6;text-transform:uppercase;letter-spacing:1px">${M[moisSel]} 2026</div>
+            <div style="font-size:20px;font-weight:800">${fmtE(totalMoisSoc)}</div>
+          </div>
+          <div style="background:#ffffff12;border-radius:10px;padding:8px 14px;text-align:center">
+            <div style="font-size:9px;opacity:.4;text-transform:uppercase;letter-spacing:1px">Annuel simulé</div>
+            <div style="font-size:17px;font-weight:800">${fmtE(sd.total26)}</div>
+          </div>
+        </div>
+      </div>
+      <div style="overflow-x:auto"><table class="rtbl">
+        <thead><tr style="background:#f8fafc">
+          <th style="padding-left:16px;min-width:180px;position:sticky;left:0;background:#f8fafc;z-index:1">Vendeur</th>
+          <th style="min-width:130px">Magasin</th>
+          ${MS.map((m,i)=>`<th class="r" style="min-width:72px;white-space:nowrap;${i===moisSel?'background:#eff6ff;color:var(--blu);font-weight:800':''}">${m}</th>`).join('')}
+          <th class="r" style="min-width:90px;background:#f1f5f9;position:sticky;right:0">Total 2026</th>
+        </tr></thead>
+        <tbody>`;
+
+    for(const md of magsFiltered){
+      // Afficher directement les vendeurs actifs sans ligne de magasin
+      md.vActifs.forEach(v=>{
+        const nom=srch?v.nom.replace(new RegExp(srch.replace(/[-[\]/{}()*+?.,\\^$|#\s]/g,'\\$&'),'gi'),m=>`<mark class="gsearch-hit">${m}</mark>`):v.nom;
+        h+=`<tr>
+          <td style="padding:7px 12px 7px 16px;font-size:12px;font-weight:600;position:sticky;left:0;background:#fff">${nom} <span class="badge-fixe">FIXE</span></td>
+          <td style="font-size:11px;color:var(--tx3)">${md.nom}</td>
+          ${v.pm.map((p,i)=>`<td class="r" style="font-size:12px;font-weight:${p>0?'700':'400'};color:${p>0?'var(--grn)':'var(--tx3)'};${i===moisSel?'background:#eff6ff;':''}">${p>0?fmtE(p):'—'}</td>`).join('')}
+          <td class="r" style="font-weight:800;background:#f8fafc;position:sticky;right:0">${fmtE(v.p26)}</td>
+        </tr>`;
+      });
+    }
+    
+    // ══ AJOUTER LES VOLANTS ACTIFS UNIQUEMENT ══════════════════════════════════════════
+    const comp=S.data.companies[cn];
+    if(comp&&comp.volants&&comp.volants.length>0){
+      const volantsActifs=comp.volants.filter(v=>!v.parti&&(!srch||v.nom.toLowerCase().includes(srch)||cn.toLowerCase().includes(srch)));
+      
+      if(volantsActifs.length>0){
+        volantsActifs.forEach(vl=>{
+          const nom=srch?vl.nom.replace(new RegExp(srch.replace(/[-[\]/{}()*+?.,\\^$|#\s]/g,'\\$&'),'gi'),m=>`<mark class="gsearch-hit">${m}</mark>`):vl.nom;
+          const pm=new Array(12).fill(0);
+          let totalVolant=0;
+          for(let m=0;m<12;m++){
+            pm[m]=getVolantTotalPrimeMois(cn,comp,vl,m,year);
+            totalVolant+=pm[m];
+          }
+          h+=`<tr>
+            <td style="padding:7px 12px 7px 24px;font-size:12px;font-weight:600;position:sticky;left:0;background:#fff">${nom} <span class="badge-vol">VOLANT</span></td>
+            <td style="font-size:11px;color:var(--vol)">Multi-magasins</td>
+            ${pm.map((p,i)=>`<td class="r" style="font-size:12px;font-weight:${p>0?'700':'400'};color:${p>0?'var(--vol)':'var(--tx3)'};${i===moisSel?'background:#eff6ff;':''}">${p>0?fmtE(p):'—'}</td>`).join('')}
+            <td class="r" style="font-weight:800;background:#f8fafc;position:sticky;right:0">${fmtE(totalVolant)}</td>
+          </tr>`;
+        });
+      }
+    }
+    // ═══════════════════════════════════════════════════════════════
+
+    h+=`<tr style="background:#0f172a;color:#fff;font-weight:800">
+      <td colspan="2" style="padding:10px 12px 10px 14px;font-size:12px">TOTAL ${cn.toUpperCase()}</td>
+      ${sd.primesParMois.map((p,i)=>`<td class="r" style="${i===moisSel?'color:#93c5fd;':''}font-size:12px">${p>0?fmtE(p):'—'}</td>`).join('')}
+      <td class="r" style="font-size:14px">${fmtE(sd.total26)}</td>
+    </tr></tbody></table></div></div>`;}
+  return h;
+}
+
+// Live update RH body without full re-render
+window.renderRhBody=function(){
+  const body=document.getElementById('rh-body');if(!body){render();return;}
+  // Recompute socData quickly
+  const socData={};const grandMois=new Array(12).fill(0);
+  for(const[cn,comp]of Object.entries(S.data.companies)){
+    const sd={name:cn,manager:comp.manager||'',magasins:[],total25:0,total26:0,primesParMois:new Array(12).fill(0),nVend:0,nParti:0};
+    for(const mag of comp.magasins){
+      const ca25=mag.totalCA2025||100000;
+      const nActifs=mag.vendeurs.filter(v=>!v.parti).length||1;
+      const md={nom:mag.nom,manager:mag.manager||comp.manager||'',ca25,vendeurs:[],total25:0,total26:0,primesParMois:new Array(12).fill(0)};
+      for(const v of mag.vendeurs){
+        let tp=0;const pm=new Array(12).fill(0);
+        for(let m=0;m<12;m++){const ca=v.caSaisie?.[m]??v.caSheet?.[m];if(ca==null)continue;
+          const formuleMois=getFormuleMois(comp,year,m,mag);const augm=formuleMois.augmentation||2;
+          const obj=v.objSheet?.[m]||v.objManuel?.[m]||calcObj(ca25,augm,m);
+          const primeMagRH=calcPrime((ca/obj)*100,comp.paliers||[]);const volPrimeRH=getStoreTotalVolantPrimeMois(cn,comp,mag,ca25,m,year);const pr=Math.round(Math.max(0,primeMagRH-volPrimeRH)/nActifs*100)/100;tp+=pr;pm[m]=pr;}
+        md.vendeurs.push({nom:v.nom,p25:v.p25||0,p26:tp,pm,months:0,parti:!!v.parti});
+        if(!v.parti){md.total26+=tp;for(let m=0;m<12;m++)md.primesParMois[m]+=pm[m];}
+        sd.nVend+=(v.parti?0:1);}
+      sd.magasins.push(md);}
+    
+    // ══ AJOUTER LES VOLANTS ══════════════════════════════════════════
+    for(const vl of (comp.volants||[])){
+      sd.total25+=(vl.p25||0);
+      if(!vl.parti){
+        let p26=0;for(let m=0;m<12;m++)p26+=getVolantTotalPrimeMois(cn,comp,vl,m,year);
+        sd.total26+=p26;
+      }
+    }
+    // ═══════════════════════════════════════════════════════════════════
+
+    socData[cn]=sd;}
+  const moisSel=S.recapMois??0;
+  const selSoc=S.rhSocTab||'all';
+  const toShow=selSoc==='all'?Object.keys(socData):[selSoc];
+  const srch=(S.recapSearch||'').toLowerCase().trim();
+  body.innerHTML=buildRhBody(socData,year,moisSel,toShow,srch);
+};
+
+// ══════ MODALS ══════
+function showAddVendeurModal(comp,mag){
+  S.modal=`<div class="modal-bg" onclick="if(event.target===this){S.modal=null;render()}"><div class="modal">
+    <h3>Ajouter un vendeur fixe</h3><div class="modal-sub">${mag} — ${comp}</div>
+    <label>Nom complet</label><input placeholder="ex: DUPONT Marie" id="newVendNom"/>
+    <div class="modal-btns">
+      <button class="btn" style="background:#f1f5f9;color:var(--tx2)" onclick="S.modal=null;render()">Annuler</button>
+      <button class="btn" style="background:var(--tx);color:#fff" onclick="doAddVendeur('${comp}','${mag}')">Ajouter</button>
+    </div></div></div>`;render();}
+
+function showAddMagModal(comp){
+  const mgr=S.data.companies[comp]?.manager||'';
+  S.modal=`<div class="modal-bg" onclick="if(event.target===this){S.modal=null;render()}"><div class="modal">
+    <h3>Ajouter un magasin</h3><div class="modal-sub">${comp}</div>
+    <label>Nom du magasin</label><input placeholder="ex: Magasin Paris Centre" id="newMagNom"/>
+    <label>Manager du magasin</label><input placeholder="${mgr||'ex: MARTIN Sophie'}" id="newMagMgr" value="${esc(mgr)}"/>
+    <label>Premier vendeur fixe (optionnel)</label><input placeholder="ex: DUPONT Marie" id="newMagVend"/>
+    <div class="modal-btns">
+      <button class="btn" style="background:#f1f5f9;color:var(--tx2)" onclick="S.modal=null;render()">Annuler</button>
+      <button class="btn" style="background:var(--tx);color:#fff" onclick="doAddMag('${comp}')">Ajouter</button>
+    </div></div></div>`;render();}
+
+function showEditMagModal(comp,magNom){
+  const c=S.data.companies[comp];const mag=c?.magasins.find(m=>m.nom===magNom);if(!mag)return;
+  const mgr=mag.manager||c?.manager||'';
+  S.modal=`<div class="modal-bg" onclick="if(event.target===this){S.modal=null;render()}"><div class="modal">
+    <h3>Modifier le magasin</h3><div class="modal-sub">${comp}</div>
+    <label>Nom du magasin</label><input id="editMagNom" value="${esc(magNom)}"/>
+    <label>Manager du magasin</label><input id="editMagMgr" placeholder="ex: MARTIN Sophie" value="${esc(mgr)}"/>
+    <label>CA total 2025 (€)</label><input type="number" id="editMagCA" value="${mag.totalCA2025||0}"/>
+    <div class="modal-btns">
+      <button class="btn" style="background:#f1f5f9;color:var(--tx2)" onclick="S.modal=null;render()">Annuler</button>
+      <button class="btn" style="background:var(--tx);color:#fff" onclick="doEditMag('${comp}','${esc(magNom)}')">Sauvegarder</button>
+    </div></div></div>`;render();}
+
+function showAddVolantModal(comp){
+  S.modal=`<div class="modal-bg" onclick="if(event.target===this){S.modal=null;render()}"><div class="modal">
+    <h3>Ajouter un vendeur volant</h3><div class="modal-sub">${comp}</div>
+    <label>Nom complet</label><input placeholder="ex: MARTIN Pierre" id="newVolNom"/>
+    <label>Primes 2025 (€)</label><input type="number" placeholder="0" id="newVolP25"/>
+    <div class="modal-btns">
+      <button class="btn" style="background:#f1f5f9;color:var(--tx2)" onclick="S.modal=null;render()">Annuler</button>
+      <button class="btn" style="background:var(--vol);color:#fff" onclick="doAddVolant('${comp}')">Ajouter</button>
+    </div></div></div>`;render();}
+
+function showObjModal(comp,mag,vendeur,mois,currentObj){
+  S.modal=`<div class="modal-bg" onclick="if(event.target===this){S.modal=null;render()}"><div class="modal">
+    <h3>Objectif manuel — ${MS[mois]}</h3><div class="modal-sub">${vendeur} · ${mag}</div>
+    <label>Objectif calculé automatiquement : ${fmtE(currentObj)}</label>
+    <input type="number" placeholder="Laisser vide = auto" id="newObj"/>
+    <div class="modal-btns">
+      <button class="btn" style="background:#f1f5f9;color:var(--tx2)" onclick="S.modal=null;render()">Annuler</button>
+      <button class="btn" style="background:var(--tx);color:#fff" onclick="doSaveObjManuel('${comp}','${mag}','${vendeur}',${mois})">Valider</button>
+    </div></div></div>`;render();}
+
+// ══════ ACTIONS ══════
+window.saveApiUrl=v=>{API_URL=v.trim();localStorage.setItem('primes_api_url',API_URL);};
+
+window.doLogin=async function(){
+  S.password=document.getElementById('pwInput')?.value||'';
+  if(!API_URL){S.loginError="Configurez l'URL Apps Script.";render();return;}
+  S.loading=true;S.loginError='';render();
+  try{const r=await api('check_password');
+    if(r.success){S.phase='main';render();
+      const data=await api('get_all_data');
+      S.data=data;S.volantJours=data.volantJours||[];S.volantCA=data.volantCA||[];S.activeComp=Object.keys(data.companies)[0]||'';
+      // Charger les années disponibles et les CA
+      await loadAvailableYears();
+      await loadCAData();
+      // Démarrer l'auto-refresh toutes les 5 minutes
+      startAutoRefresh();
+      S.loading=false;render();}
+    else{S.loginError='Mot de passe incorrect';S.loading=false;render();}}
+  catch(e){S.loginError='Erreur : '+e.message;S.loading=false;render();}};
+
+// ═══ NOUVEAU : Auto-refresh des données CA toutes les 5 minutes ═══
+let autoRefreshTimer = null;
+function startAutoRefresh(){
+  // Clear existing timer if any
+  if(autoRefreshTimer) clearInterval(autoRefreshTimer);
+  // Refresh every 1 minute (60000 ms)
+  autoRefreshTimer = setInterval(async ()=>{
+    console.log('🔄 Auto-refresh complet (vendeurs + CA)...');
+    try{
+      const d=await api('get_all_data');
+      S.data=d;
+      S.volantJours=d.volantJours||[];if(d.volantCA)S.volantCA=d.volantCA;
+      await loadCAData();
+      render();
+      console.log('✅ Données actualisées');
+    }catch(e){
+      console.error('❌ Erreur auto-refresh:',e);
+    }
+  }, 60000);
+  console.log('✅ Auto-refresh activé (toutes les 1 minute)');
+}
+
+// ═══ NOUVEAU : Chargement des années disponibles ═══
+window.loadAvailableYears=async function(){
+  try{
+    const result=await api('get_available_years');
+    if(result.years){
+      S.availableYears=result.years;
+      // Par défaut : 2025 si disponible, sinon la première année
+      if(!S.selectedYear || !S.availableYears.includes(S.selectedYear)){
+        S.selectedYear=S.availableYears.includes(2025)?2025:S.availableYears[0];
+      }
+    }
+  }catch(e){console.error('Erreur chargement années:',e);}
+};
+
+// ═══ NOUVEAU : Chargement des CA et objectifs ═══
+window.loadCAData=async function(){
+  if(!S.selectedYear||!S.data)return;
+  
+  const year=S.selectedYear||2025;
+  
+  try{
+    const comp=S.data.companies[S.activeComp];
+    if(!comp)return;
+    
+    // Récupérer la formule (gère les deux formats: objet ou array)
+    let formule={poidsY1:comp.poidsY1||70,poidsM1:comp.poidsM1||30,augmentation:comp.augmentation||2};
+    if(comp.formules?.[year]){
+      if(Array.isArray(comp.formules[year])){
+        formule=comp.formules[year][0]||formule; // Utiliser janvier comme défaut
+      } else {
+        formule=comp.formules[year];
+      }
+    }
+    
+    const poidsDynamique=formule.poidsY1||70;
+    const poidsHistorique=formule.poidsM1||30;
+    const augmentation=formule.augmentation||2;
+    
+    const result=await api('get_ca_and_objectives',{
+      year:S.selectedYear,
+      poidsDynamique,
+      poidsHistorique,
+      augmentation
+    });
+    
+    if(result.magasins){
+      applyCAToVendeurs(result.magasins);
+      S.caDataLoaded=true;
+      render();
+    }
+  }catch(e){console.error('Erreur chargement CA:',e);}
+};
+
+// ═══ NOUVEAU : Appliquer les CA du Sheet aux vendeurs fixes ═══
+function applyCAToVendeurs(caDataMagasins){
+  if(!S.data)return;
+
+  const normalize = (str) => str.toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, ' ').trim();
+
+  for(const[compName,comp]of Object.entries(S.data.companies)){
+    for(const mag of comp.magasins){
+      const magNomNorm = normalize(mag.nom);
+      let caMag = null;
+
+      // PASS 1 : EXACT MATCH sur le nom du magasin (ignorant accents/casse)
+      caMag = caDataMagasins.find(cm => normalize(cm.nom || '') === magNomNorm);
+
+      // PASS 2 : Si pas d'exact match, chercher par VILLE + STRUCTURE + MOTS-CLÉS
+      if(!caMag){
+        const compNameNorm = normalize(compName);
+        const magWords = magNomNorm.split(/\s+/).filter(w => w.length > 3);
+
+        // Chercher les magasins qui matchent la ville
+        const candidats = caDataMagasins.filter(cm => {
+          const cmVilleNorm = normalize(cm.ville || '');
+          const cmNomNorm = normalize(cm.nom || '');
+          return cmVilleNorm === magNomNorm || cmNomNorm.includes(magNomNorm) || magNomNorm.includes(cmVilleNorm);
+        });
+
+        if(candidats.length > 0){
+          // S'il y a plusieurs candidats, chercher par mots-clés distinctifs
+          if(candidats.length > 1){
+            const cmVilleNorm = normalize(candidats[0].ville || '');
+            const distinctiveWords = magWords.filter(w => !cmVilleNorm.includes(w));
+
+            if(distinctiveWords.length > 0){
+              caMag = candidats.find(cm => {
+                const cmNomNorm = normalize(cm.nom || '');
+                return distinctiveWords.some(word => cmNomNorm.includes(word));
+              });
+            }
+          }
+
+          // Fallback : prendre le premier candidat
+          if(!caMag){
+            caMag = candidats[0];
+          }
+        }
+      }
+
+      // CAS SPÉCIAL HARDCODÉ : Concarneau et Vape N Beer Concarneau (APRÈS les autres passes)
+      if(!caMag){
+        const magNomLower = mag.nom.toLowerCase();
+
+        if(magNomLower === 'concarneau'){
+          caMag = caDataMagasins.find(cm => normalize(cm.nom || '').toLowerCase() === 'concarneau');
+        }
+        else if(magNomLower.includes('vape') && magNomLower.includes('concarneau')){
+          caMag = caDataMagasins.find(cm => {
+            const cmNorm = normalize(cm.nom || '').toLowerCase();
+            return cmNorm.includes('vape') && cmNorm.includes('concarneau');
+          });
+        }
+      }
+
+      // Assigner les CA au vendeur
+      if(caMag && caMag.ca){
+        for(const v of mag.vendeurs){
+          if(!v.caSheetAuto)v.caSheetAuto={};
+          for(let m=0;m<12;m++){
+            v.caSheetAuto[m]=caMag.ca[m]||null;
+          }
+        }
+      }
+    }
+  }
+}
+// ═══ NOUVEAU : Changer d'année ═══
+window.changeYear=async function(year){
+  S.selectedYear=parseInt(year);
+  S.caDataLoaded=false;
+  render();
+  await loadCAData();
+  render();
+};
+
+
+window.doLogout=()=>{S.phase='login';S.data=null;S.password='';render();};
+window.doRefresh=async()=>{toast('Actualisation...');
+  try{const d=await api('get_all_data');S.data=d;S.volantJours=d.volantJours||[];if(d.volantCA)S.volantCA=d.volantCA;
+    await loadCAData();
+    render();toast('Actualisé');}
+  catch(e){toast('Erreur: '+e.message);}};
+
+window.doSaveManager=async(comp,val)=>{S.data.companies[comp].manager=val;render();
+  try{await api('save_manager',{societe:comp,manager:val});toast('Manager sauvegardé');}catch(e){toast('Sauvegardé localement');}};
+
+window.doSaveCA=async(comp,mag,vendeur,mois,val)=>{
+  const c=S.data.companies[comp];const m=c?.magasins.find(x=>x.nom===mag);const v=m?.vendeurs.find(x=>x.nom===vendeur);
+  if(v){if(!v.caSaisie)v.caSaisie=new Array(12).fill(null);v.caSaisie[mois]=val===''?null:parseFloat(val);}render();
+  try{await api('save_ca',{societe:comp,magasin:mag,vendeur,mois,ca:val});toast('CA sauvegardé');}catch(e){toast('Erreur: '+e.message);}
+};
+window.doSaveObjManuel=async(comp,mag,vendeur,mois)=>{
+  const val=document.getElementById('newObj')?.value||'';
+  const c=S.data.companies[comp];const m=c?.magasins.find(x=>x.nom===mag);const v=m?.vendeurs.find(x=>x.nom===vendeur);
+  if(v){if(!v.objManuel)v.objManuel=new Array(12).fill(null);v.objManuel[mois]=val===''?null:parseFloat(val);}
+  S.modal=null;render();
+  try{await api('save_objectif_manuel',{societe:comp,magasin:mag,vendeur,mois,objectif:val});toast('Objectif sauvegardé');}catch(e){toast('Erreur: '+e.message);}};
+
+window.doSavePalier=async(comp)=>{
+  const c=S.data.companies[comp];const pal=[];
+  for(let i=0;i<(c.paliers||[]).length;i++){
+    const s=document.getElementById('ps'+i)?.value;const p=document.getElementById('pp'+i)?.value;const o=document.getElementById('po'+i)?.value||'>=';
+    if(s&&p)pal.push({seuil:parseInt(s),prime:parseInt(p),operateur:o});}
+  c.paliers=pal;render();
+  try{await api('save_paliers',{societe:comp,paliers:pal,augmentation:c.augmentation||2,poidsY1:c.poidsY1||70,poidsM1:c.poidsM1||30});toast('Paliers sauvegardés');}
+  catch(e){toast('Erreur: '+e.message);}};
+
+window.doAddPalier=comp=>{S.data.companies[comp].paliers.push({seuil:120,prime:300,operateur:'>='});render();};
+window.doRemovePalier=(comp,idx)=>{S.data.companies[comp].paliers.splice(idx,1);render();doSavePalier(comp);};
+
+window.doSaveFormule=async(comp,year,y1,m1,aug)=>{
+  if(!S.data.companies[comp].formules)S.data.companies[comp].formules={};
+  
+  // Si c'est déjà un array (formules par mois), update juste les valeurs par défaut
+  if(Array.isArray(S.data.companies[comp].formules[year])){
+    // Ne rien faire - on met à jour via doSaveFormuleMois
+  } else {
+    // Ancien format - garder comme c'était
+    S.data.companies[comp].formules[year]={poidsY1:parseInt(y1)||70,poidsM1:parseInt(m1)||30,augmentation:parseFloat(aug)||2};
+  }
+  
+  // Garder les anciennes valeurs globales pour backward compatibility
+  S.data.companies[comp].poidsY1=parseInt(y1)||70;
+  S.data.companies[comp].poidsM1=parseInt(m1)||30;
+  S.data.companies[comp].augmentation=parseFloat(aug)||2;
+  render();
+  try{
+    await api('save_augmentation',{societe:comp,augmentation:aug,poidsY1:y1,poidsM1:m1});
+    toast('Formule sauvegardée pour '+year);
+    render();
+  }catch(e){toast('Erreur: '+e.message);}
+};
+
+let formuleMoisTimeout={};
+
+window.doSaveFormuleMois=async(comp,year,mois,y1,m1,aug)=>{
+  if(!S.data.companies[comp].formules)S.data.companies[comp].formules={};
+  if(!S.data.companies[comp].formules[year])S.data.companies[comp].formules[year]={};
+  if(!Array.isArray(S.data.companies[comp].formules[year])){
+    const oldFormule=S.data.companies[comp].formules[year];
+    S.data.companies[comp].formules[year]=new Array(12).fill({poidsY1:70,poidsM1:30,augmentation:2});
+    for(let i=0;i<12;i++){
+      S.data.companies[comp].formules[year][i]={...oldFormule};
+    }
+  }
+  S.data.companies[comp].formules[year][mois]={poidsY1:parseInt(y1)||70,poidsM1:parseInt(m1)||30,augmentation:parseFloat(aug)||2};
+  render();
+  
+  // Debounce : attendre 1 sec avant de sauvegarder
+  const key=`${comp}-${year}-${mois}`;
+  clearTimeout(formuleMoisTimeout[key]);
+  formuleMoisTimeout[key]=setTimeout(async()=>{
+    try{
+      await api('save_augmentation',{societe:comp,augmentation:aug,poidsY1:y1,poidsM1:m1});
+      toast('Formule sauvegardée pour '+M[mois]);
+    }catch(e){toast('Erreur: '+e.message);}
+  },1000);
+};
+
+window.doSaveFormuleMag=async(comp,magNom,year,mois,y1,m1,aug)=>{
+  const mag=S.data.companies[comp]?.magasins.find(x=>x.nom===magNom);if(!mag)return;
+  if(!mag.formules)mag.formules={};
+  if(!mag.formules[year])mag.formules[year]=new Array(12).fill(null);
+  mag.formules[year][mois]={poidsY1:parseInt(y1)||70,poidsM1:parseInt(m1)||30,augmentation:parseFloat(aug)||2};
+  render();
+  try{await api('save_formule_magasin',{societe:comp,magasin:magNom,year,mois,poidsY1:y1,poidsM1:m1,augmentation:aug});}
+  catch(e){console.warn('save_formule_magasin non disponible:',e.message);}};
+
+window.doResetFormuleMag=async(comp,magNom,year,mois)=>{
+  const mag=S.data.companies[comp]?.magasins.find(x=>x.nom===magNom);if(!mag)return;
+  if(mag.formules&&mag.formules[year]&&Array.isArray(mag.formules[year]))mag.formules[year][mois]=null;
+  render();};
+
+// ── Helpers : primes volants basées sur participation CA ──────────────────
+function getStoreTotalVolantPrimeMois(cn,comp,mag,ca25,mois,year){
+  const vcsInStore=(S.volantCA||[]).filter(x=>x.societe===cn&&x.magasin===mag.nom&&x.mois===mois&&x.ca>0);
+  if(!vcsInStore.length)return 0;
+  const firstV=mag.vendeurs[0];if(!firstV)return 0;
+  const storeCa=firstV.caSheetAuto?.[mois]??firstV.caSaisie?.[mois];
+  if(!storeCa||storeCa<=0)return 0;
+  const formuleMois=getFormuleMois(comp,year,mois,mag);const augm=formuleMois.augmentation||2;
+  const storeObj=firstV.objSheetAuto?.[mois]??firstV.objManuel?.[mois]??calcObj(ca25,augm,mois);
+  const primeMag=calcPrime((storeCa/storeObj)*100,comp.paliers||[]);
+  if(primeMag<=0)return 0;
+  let total=0;
+  for(const vc of vcsInStore){
+    total+=Math.round((vc.ca/storeCa)*primeMag);
+  }
+  return total;
+}
+
+function getVolantTotalPrimeMois(cn,comp,vl,mois,year){
+  const vcsInMois=(S.volantCA||[]).filter(x=>x.societe===cn&&x.volant===vl.nom&&x.mois===mois&&x.ca>0);
+  if(!vcsInMois.length)return 0;
+  let total=0;
+  for(const vc of vcsInMois){
+    const mag=comp.magasins.find(m=>m.nom===vc.magasin);if(!mag)continue;
+    const magCa25=mag.totalCA2025||100000;
+    const firstV=mag.vendeurs[0];if(!firstV)continue;
+    const storeCa=firstV.caSheetAuto?.[mois]??firstV.caSaisie?.[mois];
+    if(!storeCa||storeCa<=0)continue;
+    const formuleMois=getFormuleMois(comp,year,mois,mag);const augm=formuleMois.augmentation||2;
+    const storeObj=firstV.objSheetAuto?.[mois]??firstV.objManuel?.[mois]??calcObj(magCa25,augm,mois);
+    const primeMag=calcPrime((storeCa/storeObj)*100,comp.paliers||[]);
+    if(primeMag<=0)continue;
+    total+=Math.round((vc.ca/storeCa)*primeMag);
+  }
+  return total;
+}
+
+window.doSaveVolantCA=async(comp,volant,magasin,mois,ca)=>{
+  const c=parseFloat(ca)||0;
+  S.volantCA=S.volantCA.filter(x=>!(x.societe===comp&&x.volant===volant&&x.magasin===magasin&&x.mois===mois));
+  if(c>0)S.volantCA.push({societe:comp,volant,magasin,mois,ca:c});render();
+  try{await api('save_volant_ca',{societe:comp,volant,magasin,mois,ca:c});}catch(e){console.warn('save_volant_ca non disponible côté serveur:',e.message);}};
+
+window.doSaveVolantJours=async(comp,volant,magasin,mois,jours)=>{
+  const j=parseInt(jours)||0;
+  S.volantJours=S.volantJours.filter(x=>!(x.societe===comp&&x.volant===volant&&x.magasin===magasin&&x.mois===mois));
+  if(j>0)S.volantJours.push({societe:comp,volant,magasin,mois,jours:j});render();
+  try{await api('save_volant_jours',{societe:comp,volant,magasin,mois,jours:j});toast('Jours sauvegardés');}catch(e){toast('Erreur: '+e.message);}};
+
+window.doAddVendeur=async(comp,mag)=>{
+  const nom=document.getElementById('newVendNom')?.value?.trim();if(!nom){toast('Entrez un nom');return;}
+  S.modal=null;const c=S.data.companies[comp];const m=c?.magasins.find(x=>x.nom===mag);
+  if(m)m.vendeurs.push({nom,type:'fixe',p25:0,parti:false});render();
+  try{await api('add_vendeur',{societe:comp,nom,magasin:mag});toast('Vendeur ajouté');}catch(e){toast('Erreur: '+e.message);}};
+
+window.doToggleParti=async(comp,mag,nom,partir)=>{
+  const c=S.data.companies[comp];const m=c?.magasins.find(x=>x.nom===mag);const v=m?.vendeurs.find(x=>x.nom===nom);
+  if(v)v.parti=partir;render();
+  try{await api('toggle_vendeur_parti',{societe:comp,magasin:mag,vendeur:nom,parti:partir?'1':'0'});toast(partir?nom+' marqué comme parti':nom+' est de retour');}
+  catch(e){toast('Sauvegardé localement');}};
+
+window.doAssignMagasin=async(comp,nom,newMagasin)=>{
+  if(!newMagasin||!newMagasin.trim()){toast('Entrez un magasin');return;}
+  const c=S.data.companies[comp];
+  const nonAssigne=c?.magasins.find(m=>m.nom==='Non assigné');
+  if(!nonAssigne)return;
+  const v=nonAssigne.vendeurs.find(x=>x.nom===nom);
+  if(!v)return;
+  
+  // Créer le magasin s'il n'existe pas
+  if(!c.magasins.find(m=>m.nom===newMagasin.trim())){
+    c.magasins.push({nom:newMagasin.trim(),vendeurs:[],totalCA2025:0});
+  }
+  
+  // Déplacer le vendeur
+  const targetMag=c.magasins.find(m=>m.nom===newMagasin.trim());
+  nonAssigne.vendeurs=nonAssigne.vendeurs.filter(x=>x.nom!==nom);
+  targetMag.vendeurs.push(v);
+  
+  render();
+  try{await api('assign_vendeur_magasin',{societe:comp,vendeur:nom,magasin:newMagasin.trim()});toast(nom+' assigné à '+newMagasin);}
+  catch(e){toast('Sauvegardé localement');}
+};
+
+window.doRemoveVendeur=async(comp,mag,nom)=>{
+  if(!confirm(`Supprimer définitivement ${nom} ?\nAstuce : utilisez "Parti" pour conserver les données.`))return;
+  const c=S.data.companies[comp];const m=c?.magasins.find(x=>x.nom===mag);if(m)m.vendeurs=m.vendeurs.filter(v=>v.nom!==nom);render();
+  try{await api('remove_vendeur',{societe:comp,nom,magasin:mag});toast('Vendeur supprimé');}catch(e){toast('Erreur: '+e.message);}};
+
+window.showRemplaceVendeurModal=function(comp,mag,nom){
+  S.modal=`<div class="modal-bg" onclick="if(event.target===this){S.modal=null;render()}"><div class="modal">
+    <h3>Remplacer ${nom}</h3>
+    <div style="margin:12px 0">
+      <label>Date de remplacement (jj/mm/yyyy):</label>
+      <input type="text" id="dateRempl" placeholder="01/03/2025" style="width:100%;padding:8px;border:1px solid var(--brd);border-radius:4px;margin:6px 0"/>
+    </div>
+    <div style="margin:12px 0">
+      <label>Nom du remplaçant:</label>
+      <input type="text" id="nomRempl" placeholder="Nouveau vendeur" style="width:100%;padding:8px;border:1px solid var(--brd);border-radius:4px;margin:6px 0"/>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn" style="background:#f1f5f9;color:var(--tx2)" onclick="S.modal=null;render()">Annuler</button>
+      <button class="btn" style="background:var(--blu);color:white" onclick="doRemplaceVendeur('${comp}','${mag}','${nom}')">Remplacer</button>
+    </div>
+  </div></div>`;
+  render();
+};
+
+window.doRemplaceVendeur=async(comp,mag,nom)=>{
+  const dateStr=document.getElementById('dateRempl').value.trim();
+  const nomRempl=document.getElementById('nomRempl').value.trim();
+  if(!dateStr||!nomRempl){toast('Remplissez tous les champs');return;}
+  const [j,m,a]=dateStr.split('/').map(x=>x.trim());
+  if(!j||!m||!a||j.length!==2||m.length!==2||a.length!==4){toast('Format invalide (jj/mm/yyyy)');return;}
+  const dateRemplacement=a+'-'+m+'-'+j;
+  
+  const v=S.data.companies[comp]?.magasins.find(x=>x.nom===mag)?.vendeurs.find(x=>x.nom===nom);
+  if(!v)return;
+  if(!v.remplacements)v.remplacements=[];
+  v.remplacements.push({dateRemplacement,nomRemplacant:nomRempl});
+  v.remplacements.sort((a,b)=>new Date(a.dateRemplacement)-new Date(b.dateRemplacement));
+  S.modal=null;render();
+  try{await api('save_vendeur',{societe:comp,magasin:mag,vendeur:v});toast('Remplacement enregistré');}catch(e){toast('Erreur: '+e.message);}
+};
+
+window.doDeleteVendeur=async(comp,nom)=>{
+  const c=S.data.companies[comp];if(!c)return;
+  for(const mag of c.magasins){mag.vendeurs=mag.vendeurs.filter(v=>v.nom!==nom);}
+  if(c.volants){c.volants=c.volants.filter(v=>v.nom!==nom);}
+  render();
+  try{await api('remove_vendeur',{societe:comp,nom,magasin:''});toast('Vendeur supprimé définitivement');}catch(e){toast('Erreur: '+e.message);}};
+
+window.doAddMag=async(comp)=>{
+  const nom=document.getElementById('newMagNom')?.value?.trim();
+  const mgr=document.getElementById('newMagMgr')?.value?.trim();
+  const vend=document.getElementById('newMagVend')?.value?.trim();
+  if(!nom){toast('Entrez un nom');return;}S.modal=null;
+  S.data.companies[comp].magasins.push({nom,manager:mgr||S.data.companies[comp].manager||'',vendeurs:vend?[{nom:vend,type:'fixe',p25:0,parti:false}]:[],totalCA2025:0});
+  render();try{await api('add_magasin',{societe:comp,nom,manager:mgr,vendeur:vend||''});toast('Magasin ajouté');}catch(e){toast('Erreur: '+e.message);}};
+
+window.doEditMag=async(comp,oldNom)=>{
+  const newNom=document.getElementById('editMagNom')?.value?.trim();
+  const mgr=document.getElementById('editMagMgr')?.value?.trim();
+  const ca=parseFloat(document.getElementById('editMagCA')?.value)||0;
+  if(!newNom){toast('Entrez un nom');return;}S.modal=null;
+  const c=S.data.companies[comp];const mag=c?.magasins.find(m=>m.nom===oldNom);
+  if(mag){mag.nom=newNom;mag.manager=mgr;mag.totalCA2025=ca;}render();
+  try{await api('edit_magasin',{societe:comp,oldNom,newNom,manager:mgr,ca});toast('Magasin modifié');}catch(e){toast('Sauvegardé localement');}};
+
+window.doRemoveMag=async(comp,nom)=>{
+  if(!confirm(`Supprimer le magasin ${nom} ?`))return;
+  S.data.companies[comp].magasins=S.data.companies[comp].magasins.filter(m=>m.nom!==nom);render();
+  try{await api('remove_magasin',{societe:comp,nom});toast('Magasin supprimé');}catch(e){toast('Erreur: '+e.message);}};
+
+window.doFermerMagasin=async(comp,nom)=>{
+  const dateStr=prompt('Date de fermeture (jj/mm/yyyy):','15/02/2025');if(!dateStr)return;
+  const [j,m,a]=dateStr.split('/').map(x=>x.trim());
+  if(!j||!m||!a||j.length!==2||m.length!==2||a.length!==4){toast('Format invalide (jj/mm/yyyy)');return;}
+  const dateFermeture=a+'-'+m+'-'+j;
+  if(!confirm(`Fermer le magasin ${nom} à partir du ${dateStr} ? Le magasin n'apparaîtra plus après cette date.`))return;
+  const mag=S.data.companies[comp].magasins.find(m=>m.nom===nom);
+  if(mag){mag.dateFermeture=dateFermeture;render();
+    try{await api('save_magasin',{societe:comp,magasin:mag});toast('Magasin fermé à partir du '+dateStr);}catch(e){toast('Erreur: '+e.message);}}
+};
+window.doAddVolant=async(comp)=>{
+  const nom=document.getElementById('newVolNom')?.value?.trim();const p25=parseFloat(document.getElementById('newVolP25')?.value)||0;
+  if(!nom){toast('Entrez un nom');return;}S.modal=null;
+  if(!S.data.companies[comp].volants)S.data.companies[comp].volants=[];
+  S.data.companies[comp].volants.push({nom,p25,parti:false});render();
+  try{await api('add_volant',{societe:comp,nom,p25});toast('Volant ajouté');}catch(e){toast('Erreur: '+e.message);}};
+
+window.doRemoveVolant=async(comp,nom)=>{
+  if(!confirm(`Retirer le volant ${nom} ?`))return;
+  S.data.companies[comp].volants=S.data.companies[comp].volants.filter(v=>v.nom!==nom);
+  S.volantJours=S.volantJours.filter(x=>!(x.societe===comp&&x.volant===nom));render();
+  try{await api('remove_volant',{societe:comp,nom});toast('Volant retiré');}catch(e){toast('Erreur: '+e.message);}};
+
+// Live search (no full re-render)
+window.updateFixList=()=>{
+  const body=document.getElementById('fix-list-body');if(!body){render();return;}
+  const search=(S.fixSearch||'').toLowerCase().trim();const filter=S.fixFilter||'all';
+  const rows=filterSort(collectFixed(),search,filter);
+  body.innerHTML=buildFixRows(rows);};
+
+window.updateVolList=()=>render(); // volant list is simpler, just re-render
+
+window.doExport=()=>{
+  const wb=XLSX.utils.book_new();
+  for(const[cn,comp]of Object.entries(S.data.companies)){
+    const rows=[['Vendeur','Magasin','Type','Manager','Statut','Primes 2025',...M.flatMap(m=>[`Obj ${m}`,`CA ${m}`,`Taux`,`Prime`]),'Total 2026']];
+    const year=S.selectedYear||2025;
+    for(const mag of comp.magasins){const ca25=mag.totalCA2025||100000;const mgr=mag.manager||comp.manager||'';
+      for(const v of mag.vendeurs){const row=[v.nom,mag.nom,'FIXE',mgr,v.parti?'PARTI':'Actif',v.p25||0];let tp=0;
+        for(let m=0;m<12;m++){const formuleMois=getFormuleMois(comp,year,m,mag);const augm=formuleMois.augmentation||2;
+          const obj=v.objSheet?.[m]||v.objManuel?.[m]||calcObj(ca25,augm,m);const ca=v.caSaisie?.[m]??v.caSheet?.[m];
+          const t=ca!=null?(ca/obj)*100:null;const p=calcPrime(t,comp.paliers||[]);tp+=p;
+          row.push(obj,ca,t!=null?Math.round(t*10)/10+'%':'',p||'');}row.push(tp);rows.push(row);}}
+    if((comp.volants||[]).length){rows.push([]);rows.push(['— VOLANTS —']);
+      for(const v of comp.volants)rows.push([v.nom,'—','VOLANT',comp.manager||'',v.parti?'PARTI':'Actif',v.p25||0]);}
+    const ws=XLSX.utils.aoa_to_sheet(rows);XLSX.utils.book_append_sheet(wb,ws,cn.substring(0,31));}
+  XLSX.writeFile(wb,`Primes_2026_${new Date().toISOString().split('T')[0]}.xlsx`);toast('Export téléchargé');};
+
+render();
+</script>
+</body>
+</html>
