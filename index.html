@@ -1792,13 +1792,13 @@ function getVolantTotalPrimeMois(cn,comp,vl,mois,year){
   const vcsInMois=(S.volantCA||[]).filter(x=>x.societe===cn&&x.volant===vl.nom&&x.mois===mois&&x.ca>0);
   if(!vcsInMois.length)return 0;
   let total=0;
-  const formuleMois=getFormuleMois(comp,year,mois,mag);const augm=formuleMois.augmentation||2;
   for(const vc of vcsInMois){
     const mag=comp.magasins.find(m=>m.nom===vc.magasin);if(!mag)continue;
     const magCa25=mag.totalCA2025||100000;
     const firstV=mag.vendeurs[0];if(!firstV)continue;
     const storeCa=firstV.caSheetAuto?.[mois]??firstV.caSaisie?.[mois];
     if(!storeCa||storeCa<=0)continue;
+    const formuleMois=getFormuleMois(comp,year,mois,mag);const augm=formuleMois.augmentation||2;
     const storeObj=firstV.objSheetAuto?.[mois]??firstV.objManuel?.[mois]??calcObj(magCa25,augm,mois);
     const primeMag=calcPrime((storeCa/storeObj)*100,comp.paliers||[]);
     if(primeMag<=0)continue;
