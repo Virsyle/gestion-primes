@@ -688,7 +688,16 @@ function renderFormule(comp){
                 <label style="font-size:11px;margin-left:8px">Aug:</label><input type="number" style="width:52px" value="${maug}" id="mfaug_${esc(mag.nom)}" onchange="doSaveFormuleMag('${ac}','${esc(mag.nom)}',${year},${moisSel},document.getElementById('mfy1_${esc(mag.nom)}').value,document.getElementById('mfm1_${esc(mag.nom)}').value,this.value)"/><span style="font-size:11px">%</span>
                 ${hasOverride?`<button style="margin-left:8px;font-size:10px;background:#fee2e2;border:1px solid #fca5a5;border-radius:4px;padding:2px 8px;cursor:pointer;color:#991b1b" onclick="doResetFormuleMag('${ac}','${esc(mag.nom)}',${year},${moisSel})">Réinitialiser</button>`:''}
               </div>
-              <div style="font-size:9px;color:#64748b">${mpy1}% × (CA préc. × évol. N-1) + ${mpm1}% × CA N-1 | aug: +${maug}%</div>
+              <div style="font-size:9px;color:#64748b;margin-bottom:8px">${mpy1}% × (CA préc. × évol. N-1) + ${mpm1}% × CA N-1 | aug: +${maug}%</div>
+              ${(()=>{
+                const evolN1=mag.evolutionN1;
+                if(!evolN1)return`<div style="font-size:10px;color:#94a3b8;font-style:italic">Évolution N-1 : données ${year-1} non disponibles</div>`;
+                // évolution stockée en % (ex: 103.0), on divise par 100 pour avoir le ratio
+                const evol=evolN1[moisSel]!=null?(evolN1[moisSel]/100).toFixed(4):null;
+                return evol!=null
+                  ?`<div style="font-size:10px;color:#0369a1">Évol. N-1 — ${MS[moisSel]} : <b>${evol}</b></div>`
+                  :`<div style="font-size:10px;color:#94a3b8;font-style:italic">Évolution N-1 : non disponible pour ${MS[moisSel]}</div>`;
+              })()}
             </div>`:''}
           </div>`;}).join('')}
       </div>`:''}
@@ -1594,39 +1603,25 @@ window.loadAvailableYears=async function(){
 // ═══ NOUVEAU : Chargement des CA et objectifs ═══
 window.loadCAData=async function(){
   if(!S.selectedYear||!S.data)return;
-  
   const year=S.selectedYear||2025;
-  
   try{
     const comp=S.data.companies[S.activeComp];
     if(!comp)return;
-    
-    // Récupérer la formule (gère les deux formats: objet ou array)
     let formule={poidsY1:comp.poidsY1||70,poidsM1:comp.poidsM1||30,augmentation:comp.augmentation||2};
     if(comp.formules?.[year]){
-      if(Array.isArray(comp.formules[year])){
-        formule=comp.formules[year][0]||formule; // Utiliser janvier comme défaut
-      } else {
-        formule=comp.formules[year];
-      }
+      if(Array.isArray(comp.formules[year])){formule=comp.formules[year][0]||formule;}
+      else{formule=comp.formules[year];}
     }
-    
     const poidsDynamique=formule.poidsY1||70;
     const poidsHistorique=formule.poidsM1||30;
     const augmentation=formule.augmentation||2;
-    
-    const result=await api('get_ca_and_objectives',{
-      year:S.selectedYear,
-      poidsDynamique,
-      poidsHistorique,
-      augmentation
-    });
-    
+
+    const result=await api('get_ca_and_objectives',{year,poidsDynamique,poidsHistorique,augmentation});
     if(result.magasins){
       applyCAToVendeurs(result.magasins);
       S.caDataLoaded=true;
-      render();
     }
+    render();
   }catch(e){console.error('Erreur chargement CA:',e);}
 };
 
@@ -1694,12 +1689,16 @@ function applyCAToVendeurs(caDataMagasins){
         }
       }
 
-      // Assigner les CA au vendeur
+      // Assigner les CA, évolution N-1 et CA N-1 au magasin et à ses vendeurs
       if(caMag && caMag.ca){
+        mag.evolutionN1 = caMag.evolution || null;
+        mag.caN1        = caMag.caN1      || null;
         for(const v of mag.vendeurs){
           if(!v.caSheetAuto)v.caSheetAuto={};
+          if(!v.objSheetAuto)v.objSheetAuto={};
           for(let m=0;m<12;m++){
             v.caSheetAuto[m]=caMag.ca[m]||null;
+            if(caMag.objectifs)v.objSheetAuto[m]=caMag.objectifs[m]||null;
           }
         }
       }
