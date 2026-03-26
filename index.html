@@ -251,6 +251,14 @@ function calcPrime(t,pal){
     if(op==='>=')ok=t>=x.seuil;else if(op==='<=')ok=t<=x.seuil;else if(op==='>')ok=t>x.seuil;else ok=t<x.seuil;
     if(ok){r=x.prime;break;}}return r;}
 
+// Obtenir les paliers pour un mois (avec fallback aux paliers globaux)
+function getPaliersMois(comp,mois){
+  if(mois!==undefined && mois!==null && comp.paliersMois && comp.paliersMois[mois]){
+    return comp.paliersMois[mois];
+  }
+  return comp.paliers||[];
+}
+
 // Obtenir le nom du vendeur pour un mois donné (gère les remplacements)
 function getVendeurName(v,mois,year){
   if(!v.remplacements||v.remplacements.length===0)return v.nom;
@@ -644,7 +652,57 @@ function renderConfig(comp){
       <div class="plr-r"><label>Seuil</label><input type="number" value="${p.seuil}" id="ps${i}" onchange="doSavePalier('${ac}')"/><span>%</span></div>
       <div class="plr-r"><label>Prime</label><input type="number" value="${p.prime}" id="pp${i}" onchange="doSavePalier('${ac}')"/><span>€</span></div>
     </div>`;});
-  h+=`<button class="plr-add" onclick="doAddPalier('${ac}')">+</button></div></div>`;return h;}
+  h+=`<button class="plr-add" onclick="doAddPalier('${ac}')">+</button></div>`;
+
+  // ══ PALIERS MENSUELS ══════════════════════════════════════════
+  h+=`<div style="margin-top:20px">
+    <div style="font-size:11px;font-weight:700;color:var(--tx2);margin-bottom:8px">Paliers mensuels (optionnel)</div>
+    <div style="margin-bottom:12px">
+      <label style="font-size:10px;color:var(--tx3);margin-right:8px">Mois :</label>
+      <select id="palierMoisSel" style="padding:6px 10px;border:1px solid var(--brd);border-radius:6px;font-size:11px;font-weight:600" onchange="this.id='palierMoisSel';render()">
+        <option value="">Sélectionner un mois...</option>
+        ${new Array(12).fill(0).map((_,m)=>`<option value="${m}">${M[m]}</option>`).join('')}
+      </select>
+    </div>`;
+
+  const moisSel=document.getElementById('palierMoisSel')?.value;
+  if(moisSel!==undefined && moisSel!==''){
+    const mIdx=parseInt(moisSel);
+    const paliersMois=comp.paliersMois?.[mIdx]||null;
+    h+=`<div class="cfg-row">`;
+    if(paliersMois){
+      paliersMois.forEach((p,i)=>{
+        const opV=p.operateur||'>=';
+        const opOpts=OPS.map(o=>`<option value="${o.val}"${opV===o.val?' selected':''}>${o.label}</option>`).join('');
+        h+=`<div class="plr">${paliersMois.length>2?`<button class="plr-del" onclick="doRemovePalierMois('${ac}',${mIdx},${i})">×</button>`:''}
+          <div class="plr-label">Palier ${i+1} (${M[mIdx]})</div>
+          <div class="plr-r"><label>Cond.</label><select id="pom${i}" onchange="doSavePalierMois('${ac}',${mIdx})">${opOpts}</select></div>
+          <div class="plr-r"><label>Seuil</label><input type="number" value="${p.seuil}" id="psm${i}" onchange="doSavePalierMois('${ac}',${mIdx})"/><span>%</span></div>
+          <div class="plr-r"><label>Prime</label><input type="number" value="${p.prime}" id="ppm${i}" onchange="doSavePalierMois('${ac}',${mIdx})"/><span>€</span></div>
+        </div>`;});
+      h+=`<button class="plr-add" onclick="doAddPalierMois('${ac}',${mIdx})">+</button>`;
+      h+=`</div><div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--brd)">
+        <div style="font-size:10px;color:var(--tx3);margin-bottom:8px">Copier vers autres mois :</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+          ${new Array(12).fill(0).map((_,m)=>m!==mIdx?`<label style="font-size:10px;display:flex;align-items:center;gap:4px">
+            <input type="checkbox" id="copy${m}" style="cursor:pointer"/>
+            <span>${M[m]}</span>
+          </label>`:'').join('')}
+        </div>
+        <button class="btn" style="background:#2563eb;color:#fff;font-size:10px" onclick="doCopyPaliersMois('${ac}',${mIdx})">✓ Copier</button>
+      </div></div>`;
+    }else{
+      h+=`<div style="font-size:11px;color:var(--tx3);padding:10px;background:#f8fafc;border-radius:6px;border:1px solid var(--brd)">Pas de paliers spécifiques pour ${M[mIdx]} — utilisera les paliers par défaut</div>
+            <button class="btn" style="margin-top:8px;background:#10b981;color:#fff" onclick="doCreatePalierMois('${ac}',${mIdx})">Créer paliers pour ${M[mIdx]}</button>`;
+    }
+    h+=`</div></div>`;
+  }else{
+    h+=`</div>`;
+  }
+  h+=`</div>`;
+
+  return h;
+}
 
 function renderFormule(comp){
   const ac=esc(S.activeComp);
@@ -975,6 +1033,26 @@ function renderVolSection(comp){
         });
         h+=`</tbody></table></div>`;
       }
+      // Tableau alternants
+      const actAlts=(comp.alternants||[]).filter(a=>!a.parti);
+      if(actAlts.length){
+        h+=`<div style="overflow-x:auto;margin-top:12px"><table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="background:#f0fdf4">
+            <th style="padding:6px 10px;text-align:left;color:#166534;font-weight:700">Alternant</th>
+            ${MS.map(m=>`<th style="padding:6px 8px;text-align:right;color:var(--tx2);font-weight:600">${m}</th>`).join('')}
+            <th style="padding:6px 10px;text-align:right;color:#166534;font-weight:700">Total</th>
+          </tr></thead><tbody>`;
+        actAlts.forEach(a=>{
+          const pm=new Array(12).fill(0).map((_,m)=>getAlternantTotalPrimeMois(cn,comp,a,m,year));
+          const tot=pm.reduce((s,p)=>s+p,0);
+          h+=`<tr style="border-top:1px solid #dcfce7">
+            <td style="padding:6px 10px;font-weight:600;color:#166534">${a.nom}</td>
+            ${pm.map(p=>`<td style="padding:6px 8px;text-align:right;color:${p>0?'var(--grn)':'var(--tx3)'};font-weight:${p>0?'700':'400'}">${p>0?fmtPrime(p):'—'}</td>`).join('')}
+            <td style="padding:6px 10px;text-align:right;font-weight:800;color:${tot>0?'#166534':'var(--tx3)'}">${tot>0?fmtPrime(tot):'—'}</td>
+          </tr>`;
+        });
+        h+=`</tbody></table></div>`;
+      }
       h+=`<div style="font-size:11px;color:var(--tx3);margin-top:8px">👆 Sélectionnez un mois pour gérer les affectations par magasin.</div>`;
     }}
   return h+'</div>';}
@@ -1047,33 +1125,46 @@ function renderAlternantSection(comp){
 
     if(S.mois!=='all'){
       const mIdx=parseInt(S.mois);const cn=S.activeComp;const year=S.selectedYear||2025;
-      const altsM=altsActifs.filter(a=>{const aj=a.joursEcole?.[mIdx]??0;const ae=a.joursEntreprise?.[mIdx]??0;return aj>0||ae>0;});
+      // Filtrer les alternants actifs ce mois (exclure ceux avec CDI/CDD ce mois)
+      const altsM=altsActifs.filter(a=>{
+        if(!a.cdiDate) return true; // Pas de CDI/CDD
+        const [mCDI]=String(a.cdiDate).split('-'); // Format: "5" ou "2025-05-01"
+        const moisCDI=parseInt(mCDI)||0;
+        return moisCDI > mIdx || moisCDI === 0; // Actif si CDI après ce mois
+      });
       if(!altsM.length){
         h+=`<div style="font-size:12px;color:var(--tx3);margin-top:12px">Aucun alternant actif ce mois.</div>`;
       }else{
-        h+=`<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:12px 14px;margin-top:12px">
-          <div style="font-size:11px;font-weight:700;color:#166534;margin-bottom:8px">Détails — ${M[mIdx]}</div>
-          <div style="display:flex;flex-direction:column;gap:10px">`;
+        // Ligne école par alternant
+        h+=`<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px 14px;margin-bottom:12px">
+          <div style="font-size:11px;font-weight:700;color:#166534;margin-bottom:8px">📚 École — ${M[mIdx]}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">`;
         altsM.forEach(a=>{
-          const je=a.joursEcole?.[mIdx]??0;const jent=a.joursEntreprise?.[mIdx]??0;const total=je+jent;
-          const pEcole=a.joursEcole?.[mIdx]??null;const pCDI=a.cdiDate?true:false;
-          h+=`<div style="background:#fff;border:1px solid #86efac;border-radius:6px;padding:10px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-            <div>
-              <div style="font-size:10px;color:#15803d;font-weight:700;margin-bottom:3px">${a.nom}</div>
-              <div style="font-size:11px;color:var(--tx2);font-weight:600">${a.magasin||'Non assigné'}</div>
+          const ecoleJours=a.joursEcole?.[mIdx]??null;
+          h+=`<div style="background:#fff;border:1px solid #86efac;border-radius:6px;padding:6px 10px;min-width:120px">
+            <div style="font-size:10px;color:#166534;font-weight:700;margin-bottom:4px">${a.nom.split(' ')[0]}</div>
+            <div style="display:flex;align-items:center;gap:4px">
+              <input type="number" min="0" placeholder="0" style="width:44px;padding:3px 4px;border:1px solid #86efac;border-radius:4px;font-size:12px;font-weight:700;text-align:center" value="${ecoleJours!=null?ecoleJours:''}" onchange="doSaveAlternantJours('${ac}','${esc(a.nom)}','ecole',${mIdx},this.value)"/>
+              <span style="font-size:11px;color:#166534">j</span>
             </div>
-            <div>
-              <div style="font-size:10px;color:#15803d;font-weight:700;margin-bottom:3px">École</div>
-              <input type="number" min="0" max="31" placeholder="0" style="width:100%;padding:4px;border:1px solid #86efac;border-radius:4px;font-size:12px;font-weight:700;text-align:center" value="${pEcole!=null?pEcole:''}" onchange="doSaveAlternantJours('${ac}','${esc(a.nom)}','ecole',${mIdx},this.value)"/>
-              <div style="font-size:9px;color:var(--tx3);margin-top:2px">${pEcole!=null?pEcole+' j':'-'}</div>
+          </div>`;});
+        h+=`</div></div>`;
+
+        // Ligne CDI/CDD par alternant
+        h+=`<div style="background:#fff3cd;border:1px solid #ffeaa7;border-radius:8px;padding:10px 14px;margin-bottom:12px">
+          <div style="font-size:11px;font-weight:700;color:#856404;margin-bottom:8px">📋 CDI/CDD — Mois transition</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">`;
+        altsActifs.forEach(a=>{
+          const moisCDI=a.cdiDate?String(a.cdiDate).split('-')[0]:'';
+          h+=`<div style="background:#fff;border:1px solid #ffeaa7;border-radius:6px;padding:6px 10px;min-width:140px">
+            <div style="font-size:10px;color:#856404;font-weight:700;margin-bottom:4px">${a.nom.split(' ')[0]}</div>
+            <div style="display:flex;align-items:center;gap:4px">
+              <select style="padding:3px 4px;border:1px solid #ffeaa7;border-radius:4px;font-size:11px;font-weight:700" onchange="doSaveAlternantCDI('${ac}','${esc(a.nom)}',this.value)">
+                <option value="">Pas de CDI/CDD</option>
+                ${new Array(12).fill(0).map((_,m)=>`<option value="${m+1}" ${moisCDI===String(m+1)?'selected':''}>${M[m]}</option>`).join('')}
+              </select>
             </div>
-            <div>
-              <div style="font-size:10px;color:#15803d;font-weight:700;margin-bottom:3px">Entreprise</div>
-              <input type="number" min="0" max="31" placeholder="0" style="width:100%;padding:4px;border:1px solid #86efac;border-radius:4px;font-size:12px;font-weight:700;text-align:center" value="${jent!=null?jent:''}" onchange="doSaveAlternantJours('${ac}','${esc(a.nom)}','entreprise',${mIdx},this.value)"/>
-              <div style="font-size:9px;color:var(--tx3);margin-top:2px">${jent!=null?jent+' j':'-'}</div>
-            </div>
-          </div>`;
-        });
+          </div>`;});
         h+=`</div></div>`;
 
         // Affectations par magasin pour les alternants
@@ -1119,6 +1210,17 @@ function renderAlternantSection(comp){
               ${joursAlt!=null?`<div class="mc-res"><span class="tx-${cMag}">${participation!=null?participation.toFixed(1)+'%':''}</span><span style="color:${prime>0?'var(--grn)':'var(--tx3)'}">${fmtPrime(prime)}</span></div>`:''}
             </div>`;});
           h+=`</div></div>`;});
+        h+=`</div></div>`;
+        // Total mensuel par alternant
+        h+=`<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px 14px;margin-top:8px">
+          <div style="font-size:11px;font-weight:700;color:#166534;margin-bottom:8px">Total prime — ${M[mIdx]}</div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap">`;
+        altsM.forEach(a=>{
+          const total=getAlternantTotalPrimeMois(cn,comp,a,mIdx,year);
+          h+=`<div style="background:#fff;border:1px solid #86efac;border-radius:6px;padding:6px 12px;text-align:center">
+            <div style="font-size:10px;color:#166534;font-weight:700">${a.nom.split(' ')[0]}</div>
+            <div style="font-size:16px;font-weight:800;color:${total>0?'var(--grn)':'var(--tx3)'}">${fmtPrime(total)}</div>
+          </div>`;});
         h+=`</div></div>`;
       }
     }else{
@@ -1276,7 +1378,7 @@ function renderRecap(){
   for(const[cn,comp]of Object.entries(S.data.companies)){
     const sd={name:cn,manager:comp.manager||'',magasins:[],
       totalYear:0,total25:0,total26:0,primesParMois:new Array(12).fill(0),
-      nVend:0,nParti:0,nVolants:(comp.volants||[]).filter(v=>!v.parti).length};
+      nVend:0,nParti:0,nVolants:(comp.volants||[]).filter(v=>!v.parti).length,nAlternants:(comp.alternants||[]).filter(a=>!a.parti).length};
     
     for(const mag of comp.magasins){
       const ca25=mag.totalCA2025||100000;
@@ -1308,8 +1410,16 @@ function renderRecap(){
         gYear+=p;
       }
     }
-    // ═══════════════════════════════════════════════════════════════════
-    
+    // ══ AJOUTER LES PRIMES DES ALTERNANTS ════════════════════════════════
+    for(const alt of (comp.alternants||[])){
+      if(!alt.parti){
+        let p=0;for(let m=0;m<12;m++)p+=getAlternantTotalPrimeMois(cn,comp,alt,m,year);
+        sd.totalYear+=p;sd.total26+=p;
+        gYear+=p;
+      }
+    }
+    // ═════════════════════════════════════════════════════════════════════
+
     socData[cn]=sd;}
 
   const mode=S.recapMode||'annuel';
@@ -1375,7 +1485,7 @@ function renderRecapAnnuel(socData,year,selectedSoc='all'){
         <div>
           <div style="font-size:9px;text-transform:uppercase;letter-spacing:2px;opacity:.4;margin-bottom:2px">Société</div>
           <div style="font-weight:800;font-size:16px">${cn}</div>
-          <div style="font-size:10px;opacity:.5;margin-top:2px">👤 ${sd.manager||'—'} · ${filterNormalMagasins(sd.magasins).length} magasin(s) · ${sd.nVend} actif(s)${sd.nParti?' · <span style="color:#fca5a5">'+sd.nParti+' parti(s)</span>':''} · ${sd.nVolants} volant(s)</div>
+          <div style="font-size:10px;opacity:.5;margin-top:2px">👤 ${sd.manager||'—'} · ${filterNormalMagasins(sd.magasins).length} magasin(s) · ${sd.nVend} actif(s)${sd.nParti?' · <span style="color:#fca5a5">'+sd.nParti+' parti(s)</span>':''} · ${sd.nVolants} volant(s) · ${sd.nAlternants||0} alternant(s)</div>
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <div style="background:#ffffff12;border-radius:10px;padding:8px 14px;text-align:center">
@@ -1433,6 +1543,40 @@ function renderRecapAnnuel(socData,year,selectedSoc='all'){
           h+=`<tr>
             <td style="padding:7px 12px 7px 32px;font-size:12px">${vl.nom} <span class="badge-vol">VOLANT</span></td>
             <td style="font-size:11px;color:var(--vol)">Multi-magasins</td>
+            <td class="r" style="color:var(--tx3)">${fmtE(p25)}</td>
+            <td class="r" style="color:var(--tx3)">${moisSaisis}/12</td>
+            <td class="r" style="font-weight:800">${fmtE(p26)}</td>
+            <td class="r" style="font-weight:600;color:${cl}">${ar+' '+fmtE(Math.abs(d))}</td>
+          </tr>`;
+        });
+      }
+    }
+
+    // ══ AJOUTER LES ALTERNANTS ACTIFS UNIQUEMENT ══════════════════════════════════════════
+    if(comp&&comp.alternants&&comp.alternants.length>0){
+      const alternantsActifs = comp.alternants.filter(a => !a.parti);
+
+      if(alternantsActifs.length > 0){
+        h+=`<tr style="background:#f0fdf4">
+          <td colspan="2" style="padding:8px 12px 8px 16px;font-size:12px;font-weight:700;color:#166534">📚 <b>Alternants</b></td>
+          <td class="r" style="color:var(--tx3)">—</td>
+          <td class="r" style="color:var(--tx3)">—</td>
+          <td class="r" style="color:var(--tx3)">—</td>
+          <td class="r" style="color:var(--tx3)">—</td>
+        </tr>`;
+
+        alternantsActifs.forEach(alt=>{
+          const p25=alt.p25||0;
+          let p26=0;const pm26=new Array(12).fill(0);
+          for(let m=0;m<12;m++){pm26[m]=getAlternantTotalPrimeMois(cn,comp,alt,m,year);p26+=pm26[m];}
+          const moisSaisis=pm26.filter(p=>p>0).length;
+          const d=p26-p25;
+          const cl=d>0?'var(--red)':d<0?'var(--grn)':'var(--tx3)';
+          const ar=d>0?'▲':d<0?'▼':'';
+
+          h+=`<tr>
+            <td style="padding:7px 12px 7px 32px;font-size:12px">${alt.nom} <span class="badge-alt">ALT</span></td>
+            <td style="font-size:11px;color:#166534">Multi-magasins</td>
             <td class="r" style="color:var(--tx3)">${fmtE(p25)}</td>
             <td class="r" style="color:var(--tx3)">${moisSaisis}/12</td>
             <td class="r" style="font-weight:800">${fmtE(p26)}</td>
@@ -1626,7 +1770,15 @@ window.renderRhBody=function(){
         sd.total26+=p26;
       }
     }
-    // ═══════════════════════════════════════════════════════════════════
+    // ══ AJOUTER LES ALTERNANTS ═══════════════════════════════════════════
+    for(const alt of (comp.alternants||[])){
+      sd.total25+=(alt.p25||0);
+      if(!alt.parti){
+        let p26=0;for(let m=0;m<12;m++)p26+=getAlternantTotalPrimeMois(cn,comp,alt,m,year);
+        sd.total26+=p26;
+      }
+    }
+    // ═════════════════════════════════════════════════════════════════════
 
     socData[cn]=sd;}
   const moisSel=S.recapMois??0;
@@ -1705,7 +1857,6 @@ function showAddAlternantModal(comp){
   S.modal=`<div class="modal-bg" onclick="if(event.target===this){S.modal=null;render()}"><div class="modal">
     <h3>Ajouter un alternant</h3><div class="modal-sub">${comp}</div>
     <label>Nom complet</label><input placeholder="ex: MARTIN Pierre" id="newAltNom"/>
-    <label>Magasin d'affectation</label><input placeholder="ex: Vannes" id="newAltMag"/>
     <label>Primes 2025 (€)</label><input type="number" placeholder="0" id="newAltP25"/>
     <label>Période (mois)</label>
     <div style="display:flex;gap:8px;margin-top:6px">
@@ -1939,6 +2090,55 @@ window.doSavePalier=async(comp)=>{
 window.doAddPalier=comp=>{S.data.companies[comp].paliers.push({seuil:120,prime:300,operateur:'>='});render();};
 window.doRemovePalier=(comp,idx)=>{S.data.companies[comp].paliers.splice(idx,1);render();doSavePalier(comp);};
 
+// ══ PALIERS MENSUELS ══════════════════════════════════════════════════════
+window.doSavePalierMois=async(comp,mois)=>{
+  const c=S.data.companies[comp];
+  if(!c.paliersMois)c.paliersMois={};
+  const pal=[];
+  const paliers=c.paliersMois[mois]||[];
+  for(let i=0;i<paliers.length;i++){
+    const s=document.getElementById('psm'+i)?.value;const p=document.getElementById('ppm'+i)?.value;const o=document.getElementById('pom'+i)?.value||'>=';
+    if(s&&p)pal.push({seuil:parseInt(s),prime:parseInt(p),operateur:o});}
+  c.paliersMois[mois]=pal;render();
+  try{await api('save_paliers_mois',{societe:comp,mois,paliers:pal});toast('Paliers mensuels sauvegardés');}
+  catch(e){toast('Erreur: '+e.message);}};
+
+window.doAddPalierMois=(comp,mois)=>{
+  const c=S.data.companies[comp];
+  if(!c.paliersMois)c.paliersMois={};
+  if(!c.paliersMois[mois])c.paliersMois[mois]=[];
+  c.paliersMois[mois].push({seuil:120,prime:300,operateur:'>='});render();};
+
+window.doRemovePalierMois=(comp,mois,idx)=>{
+  const c=S.data.companies[comp];
+  if(c.paliersMois?.[mois]){c.paliersMois[mois].splice(idx,1);render();doSavePalierMois(comp,mois);}};
+
+window.doCreatePalierMois=(comp,mois)=>{
+  const c=S.data.companies[comp];
+  if(!c.paliersMois)c.paliersMois={};
+  c.paliersMois[mois]=(c.paliers||[{seuil:95,prime:50},{seuil:100,prime:100},{seuil:110,prime:200}]).map(p=>({...p}));
+  render();};
+
+window.doCopyPaliersMois=async(comp,fromMois)=>{
+  const c=S.data.companies[comp];
+  const paliers=c.paliersMois?.[fromMois];
+  if(!paliers){toast('Aucun palier à copier');return;}
+  const selected=[];
+  for(let m=0;m<12;m++){
+    if(m!==fromMois && document.getElementById('copy'+m)?.checked){selected.push(m);}
+  }
+  if(!selected.length){toast('Sélectionnez au moins un mois');return;}
+  if(!c.paliersMois)c.paliersMois={};
+  for(const m of selected){c.paliersMois[m]=paliers.map(p=>({...p}));}
+  render();
+  try{
+    for(const m of selected){
+      await api('save_paliers_mois',{societe:comp,mois:m,paliers:c.paliersMois[m]});
+    }
+    toast('Paliers copiés vers '+selected.length+' mois');
+  }catch(e){toast('Erreur: '+e.message);}
+};
+
 window.doSaveFormule=async(comp,year,y1,m1,aug)=>{
   if(!S.data.companies[comp].formules)S.data.companies[comp].formules={};
   
@@ -1947,13 +2147,13 @@ window.doSaveFormule=async(comp,year,y1,m1,aug)=>{
     // Ne rien faire - on met à jour via doSaveFormuleMois
   } else {
     // Ancien format - garder comme c'était
-    S.data.companies[comp].formules[year]={poidsY1:parseInt(y1)||70,poidsM1:parseInt(m1)||30,augmentation:parseFloat(aug)||2};
+    S.data.companies[comp].formules[year]={poidsY1:parseInt(y1)||70,poidsM1:parseInt(m1)||30,augmentation:parseFloat(aug)??2};
   }
   
   // Garder les anciennes valeurs globales pour backward compatibility
   S.data.companies[comp].poidsY1=parseInt(y1)||70;
   S.data.companies[comp].poidsM1=parseInt(m1)||30;
-  S.data.companies[comp].augmentation=parseFloat(aug)||2;
+  S.data.companies[comp].augmentation=parseFloat(aug)??2;
   render();
   try{
     await api('save_augmentation',{societe:comp,augmentation:aug,poidsY1:y1,poidsM1:m1});
@@ -1974,7 +2174,7 @@ window.doSaveFormuleMois=async(comp,year,mois,y1,m1,aug)=>{
       S.data.companies[comp].formules[year][i]={...oldFormule};
     }
   }
-  S.data.companies[comp].formules[year][mois]={poidsY1:parseInt(y1)||70,poidsM1:parseInt(m1)||30,augmentation:parseFloat(aug)||2};
+  S.data.companies[comp].formules[year][mois]={poidsY1:parseInt(y1)||70,poidsM1:parseInt(m1)||30,augmentation:parseFloat(aug)??2};
   render();
   
   // Debounce : attendre 1 sec avant de sauvegarder
@@ -1992,7 +2192,7 @@ window.doSaveFormuleMag=async(comp,magNom,year,mois,y1,m1,aug)=>{
   const mag=S.data.companies[comp]?.magasins.find(x=>x.nom===magNom);if(!mag)return;
   if(!mag.formules)mag.formules={};
   if(!mag.formules[year])mag.formules[year]=new Array(12).fill(null);
-  mag.formules[year][mois]={poidsY1:parseInt(y1)||70,poidsM1:parseInt(m1)||30,augmentation:parseFloat(aug)||2};
+  mag.formules[year][mois]={poidsY1:parseInt(y1)||70,poidsM1:parseInt(m1)||30,augmentation:parseFloat(aug)??2};
   render();
   try{await api('save_formule_magasin',{societe:comp,magasin:magNom,year,mois,poidsY1:y1,poidsM1:m1,augmentation:aug});}
   catch(e){console.warn('save_formule_magasin non disponible:',e.message);}};
@@ -2061,6 +2261,29 @@ function getVolantTotalPrimeMois(cn,comp,vl,mois,year){
     const primeMag=calcPrime((storeCa/storeObj)*100,comp.paliers||[]);
     if(primeMag<=0)continue;
     total+=Math.round((vj.jours/diviseur)*primeMag);
+  }
+  return total;
+}
+
+function getAlternantTotalPrimeMois(cn,comp,alt,mois,year){
+  const ajsInMois=(S.alternantJours||[]).filter(x=>x.societe===cn&&x.alternant===alt.nom&&x.mois===mois&&x.jours>0);
+  if(!ajsInMois.length)return 0;
+  const totalJoursMags=ajsInMois.reduce((s,aj)=>s+aj.jours,0);
+  const joursEcole=alt.joursEcole?.[mois]??0;
+  const diviseur=totalJoursMags+joursEcole;
+  if(diviseur<=0)return 0;
+  let total=0;
+  for(const aj of ajsInMois){
+    const mag=comp.magasins.find(m=>m.nom===aj.magasin);if(!mag)continue;
+    const magCa25=mag.totalCA2025||100000;
+    const firstV=mag.vendeurs[0];if(!firstV)continue;
+    const storeCa=firstV.caSheetAuto?.[mois]??firstV.caSaisie?.[mois];
+    if(!storeCa||storeCa<=0)continue;
+    const formuleMois=getFormuleMois(comp,year,mois,mag);const augm=formuleMois.augmentation??2;
+    const storeObj=firstV.objSheetAuto?.[mois]??firstV.objManuel?.[mois]??calcObj(magCa25,augm,mois);
+    const primeMag=calcPrime((storeCa/storeObj)*100,comp.paliers||[]);
+    if(primeMag<=0)continue;
+    total+=Math.round((aj.jours/diviseur)*primeMag);
   }
   return total;
 }
@@ -2221,18 +2444,16 @@ window.doRemoveVolant=async(comp,nom)=>{
 
 window.doAddAlternant=async(comp)=>{
   const nom=document.getElementById('newAltNom')?.value?.trim()||'';
-  const magasin=document.getElementById('newAltMag')?.value?.trim()||'';
   const p25=(parseFloat(document.getElementById('newAltP25')?.value)??0)||0;
   const moisDe=(parseInt(document.getElementById('newAltMoisDe')?.value)??0)||1;
   const moisA=(parseInt(document.getElementById('newAltMoisA')?.value)??0)||12;
   if(!nom){toast('Entrez un nom');return;}
-  if(!magasin){toast('Entrez un magasin');return;}
   S.modal=null;
   if(!S.data.companies[comp])S.data.companies[comp]={};
   if(!S.data.companies[comp].alternants)S.data.companies[comp].alternants=[];
-  const alt={nom,magasin,p25,parti:false,moisDe,moisA,joursEcole:{},joursEntreprise:{}};
+  const alt={nom,p25,parti:false,moisDe,moisA,joursEcole:{},joursEntreprise:{}};
   S.data.companies[comp].alternants.push(alt);render();
-  try{await api('add_alternant',{societe:comp,nom,magasin,p25,moisDe,moisA});toast('Alternant ajouté');}catch(e){toast('Erreur: '+e.message);}};
+  try{await api('add_alternant',{societe:comp,nom,p25});toast('Alternant ajouté');}catch(e){toast('Erreur: '+e.message);}};
 
 window.doRemoveAlternant=async(comp,nom)=>{
   if(!confirm(`Retirer l'alternant ${nom} ?`))return;
