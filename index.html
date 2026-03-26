@@ -506,7 +506,13 @@ function toast(msg,dur=2500){const t=document.getElementById('toast');t.textCont
 async function optimisticUpdate(updateFn, saveFn, successMsg='Sauvegardé') {
   updateFn();render();
   const retry=async(attempt=0)=>{
-    try{await saveFn();S.data=await getAllData();render();toast('✅ '+successMsg);}
+    try{
+      await saveFn();
+      // NE PAS recharger toutes les données - elles sont déjà à jour localement
+      // Juste afficher le succès. L'auto-refresh mettra à jour si nécessaire.
+      render();
+      toast('✅ '+successMsg);
+    }
     catch(e){
       if(attempt<3){setTimeout(()=>retry(attempt+1),2000);if(attempt===0)toast('⚠️ Erreur, nouvelle tentative...');}
       else toast('❌ Erreur : '+e.message);
@@ -549,12 +555,13 @@ function render(){
     if(comp){
       h+=renderConfig(comp);h+=renderFormule(comp);h+=renderStats(comp, S.gestionTab || 'fixes');h+=renderMonthBar();
       
-      // Sous-onglets Fixes / Volants / Alternants
+      // Sous-onglets Fixes / Volants / Alternants / Archivés
       const gestionTab = S.gestionTab || 'fixes';
       h+=`<div class="nav-tabs" style="margin-bottom:16px">
         <button class="tab ${gestionTab==='fixes'?'on':''}" onclick="S.gestionTab='fixes';render()">🏪 Vendeurs Fixes</button>
         <button class="tab ${gestionTab==='volants'?'vol-on':''}" onclick="S.gestionTab='volants';render()">🔄 Vendeurs Volants</button>
         <button class="tab ${gestionTab==='alternants'?'on':''}" onclick="S.gestionTab='alternants';render()">📚 Alternants</button>
+        <button class="tab ${gestionTab==='archives'?'on':''}" onclick="S.gestionTab='archives';render()">📦 Archivés</button>
       </div>`;
 
       if(gestionTab === 'fixes'){
@@ -566,6 +573,8 @@ function render(){
         h+=renderVolSection(comp);
       } else if(gestionTab === 'alternants'){
         h+=renderAlternantSection(comp);
+      } else if(gestionTab === 'archives'){
+        h+=renderArchivesSection(comp, S.activeComp);
       }
     }}
   h+='<div class="footer">Plateforme Primes 2026 — Synchronisé avec Google Sheets</div>';
@@ -2135,26 +2144,42 @@ window.doLogin=async function(){
     else{S.loginError='Mot de passe incorrect';S.loading=false;render();}}
   catch(e){S.loginError='Erreur : '+e.message;S.loading=false;render();}};
 
-// ═══ NOUVEAU : Auto-refresh des données CA toutes les 5 minutes ═══
+// ═══ NOUVEAU : Auto-refresh des données CA toutes les 1 minute ═══
 let autoRefreshTimer = null;
+let lastActivityTime = Date.now();
+
+// Tracker l'activité de l'utilisateur pour éviter les render() pendant l'édition
+// IMPORTANT: Ces listeners sont passifs et ne bloquent PAS les clics
+document.addEventListener('input', () => { lastActivityTime = Date.now(); }, { passive: true });
+document.addEventListener('change', () => { lastActivityTime = Date.now(); }, { passive: true });
+
 function startAutoRefresh(){
   // Clear existing timer if any
   if(autoRefreshTimer) clearInterval(autoRefreshTimer);
-  // Refresh every 1 minute (60000 ms)
+
+  // Refresh every 1 minute (60000 ms) mais ne redessine que si inactif 10s
   autoRefreshTimer = setInterval(async ()=>{
-    console.log('🔄 Auto-refresh complet (vendeurs + CA)...');
+    const timeSinceActivity = Date.now() - lastActivityTime;
+    const userIsEditing = timeSinceActivity < 10000; // inactif < 10s = en train d'éditer
+
+    console.log(userIsEditing ? '🔄 Mise à jour CA en arrière-plan (sans redessiner)...' : '🔄 Auto-refresh CA & vendeurs...');
     try{
-      const d=await api('get_all_data');
-      S.data=d;
-      S.volantJours=d.volantJours||[];if(d.volantCA)S.volantCA=d.volantCA;if(d.volantAbsences)S.volantAbsences=d.volantAbsences;if(d.alternantJours)S.alternantJours=d.alternantJours;
+      // Toujours charger les CA (critique)
       await loadCAData();
-      render();
-      console.log('✅ Données actualisées');
+
+      // Redessiner SEULEMENT si l'utilisateur n'est pas en train d'éditer
+      if(!userIsEditing) {
+        render();
+        console.log('✅ Données actualisées et affichées');
+      } else {
+        console.log('✅ CA mis à jour (affichage en arrière-plan)');
+      }
     }catch(e){
       console.error('❌ Erreur auto-refresh:',e);
     }
-  }, 60000);
-  console.log('✅ Auto-refresh activé (toutes les 1 minute)');
+  }, 60000); // 1 minute
+
+  console.log('✅ Auto-refresh CA activé (toutes les 1 minute, render si inactif 10s+)');
 }
 
 // ═══ NOUVEAU : Chargement des années disponibles ═══
