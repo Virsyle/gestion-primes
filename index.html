@@ -765,6 +765,10 @@ function renderConfig(comp){
 function renderFormule(comp){
   const ac=esc(S.activeComp);
   const year=S.selectedYear||2025;
+  const gestionTab = S.gestionTab || 'fixes';
+
+  // Ne afficher la formule que pour les Vendeurs Fixes
+  if(gestionTab !== 'fixes') return '';
 
   // Si S.mois === 'all', afficher la formule par défaut (tous les mois)
   if(S.mois==='all'){
@@ -800,7 +804,7 @@ function renderFormule(comp){
         ${S.showMagasinsFormule?'▼':'▶'} Formules par magasin
       </div>
       ${S.showMagasinsFormule?`<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">
-        ${comp.magasins.map(mag=>{
+        ${filterNormalMagasins(comp.magasins).map(mag=>{
           const isOpen=S.selectedMagasinFormule===mag.nom;
           const magFormule=getFormuleMois(comp,year,moisSel,mag);
           const mpy1=magFormule.poidsY1??70;const mpm1=magFormule.poidsM1??30;const maug=magFormule.augmentation??2;
