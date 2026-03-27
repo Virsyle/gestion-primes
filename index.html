@@ -555,13 +555,12 @@ function render(){
     if(comp){
       h+=renderConfig(comp);h+=renderFormule(comp);h+=renderStats(comp, S.gestionTab || 'fixes');h+=renderMonthBar();
       
-      // Sous-onglets Fixes / Volants / Alternants / Archivés
+      // Sous-onglets Fixes / Volants / Alternants
       const gestionTab = S.gestionTab || 'fixes';
       h+=`<div class="nav-tabs" style="margin-bottom:16px">
         <button class="tab ${gestionTab==='fixes'?'on':''}" onclick="S.gestionTab='fixes';render()">🏪 Vendeurs Fixes</button>
         <button class="tab ${gestionTab==='volants'?'vol-on':''}" onclick="S.gestionTab='volants';render()">🔄 Vendeurs Volants</button>
         <button class="tab ${gestionTab==='alternants'?'on':''}" onclick="S.gestionTab='alternants';render()">📚 Alternants</button>
-        <button class="tab ${gestionTab==='archives'?'on':''}" onclick="S.gestionTab='archives';render()">📦 Archivés</button>
       </div>`;
 
       if(gestionTab === 'fixes'){
@@ -573,8 +572,6 @@ function render(){
         h+=renderVolSection(comp);
       } else if(gestionTab === 'alternants'){
         h+=renderAlternantSection(comp);
-      } else if(gestionTab === 'archives'){
-        h+=renderArchivesSection(comp, S.activeComp);
       }
     }}
   h+='<div class="footer">Plateforme Primes 2026 — Synchronisé avec Google Sheets</div>';
@@ -866,6 +863,14 @@ function renderStats(comp, type='fixes'){
           }
           if(!matched)sous++;
         }
+      }
+    }
+  } else if(type==='alternants'){
+    const cn=S.activeComp;
+    for(const alt of (comp.alternants||[])){
+      if(alt.parti)continue;
+      for(const m of moisToCheck){
+        total+=getAlternantTotalPrimeMois(cn,comp,alt,m,year);
       }
     }
   } else {
@@ -1177,6 +1182,7 @@ function renderAlternantSection(comp){
       altsActifs.forEach(a=>{h+=`<div class="vol-chip" style="border:1px solid #86efac;background:#f0fdf4">
         <span class="badge-alt">ALT</span><b>${a.nom}</b>
         <span style="color:var(--tx3);font-size:10px">${a.magasin||'?'}</span>
+        <button style="background:none;border:none;color:#059669;font-size:14px;cursor:pointer" onclick="doToggleAlternantParti('${ac}','${esc(a.nom)}')">⚙️</button>
         <button style="background:none;border:none;color:#16a34a;font-size:14px;cursor:pointer" onclick="doRemoveAlternant('${ac}','${esc(a.nom)}')">×</button>
         </div>`;});h+=`</div>`;
     }
@@ -1204,23 +1210,6 @@ function renderAlternantSection(comp){
             <div style="display:flex;align-items:center;gap:4px">
               <input type="number" min="0" placeholder="0" style="width:44px;padding:3px 4px;border:1px solid #86efac;border-radius:4px;font-size:12px;font-weight:700;text-align:center" value="${ecoleJours!=null?ecoleJours:''}" onchange="doSaveAlternantJours('${ac}','${esc(a.nom)}','ecole',${mIdx},this.value)"/>
               <span style="font-size:11px;color:#166534">j</span>
-            </div>
-          </div>`;});
-        h+=`</div></div>`;
-
-        // Ligne CDI/CDD par alternant
-        h+=`<div style="background:#fff3cd;border:1px solid #ffeaa7;border-radius:8px;padding:10px 14px;margin-bottom:12px">
-          <div style="font-size:11px;font-weight:700;color:#856404;margin-bottom:8px">📋 CDI/CDD — Mois transition</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">`;
-        altsActifs.forEach(a=>{
-          const moisCDI=a.cdiDate?String(a.cdiDate).split('-')[0]:'';
-          h+=`<div style="background:#fff;border:1px solid #ffeaa7;border-radius:6px;padding:6px 10px;min-width:140px">
-            <div style="font-size:10px;color:#856404;font-weight:700;margin-bottom:4px">${a.nom.split(' ')[0]}</div>
-            <div style="display:flex;align-items:center;gap:4px">
-              <select style="padding:3px 4px;border:1px solid #ffeaa7;border-radius:4px;font-size:11px;font-weight:700" onchange="doSaveAlternantCDI('${ac}','${esc(a.nom)}',this.value)">
-                <option value="">Pas de CDI/CDD</option>
-                ${new Array(12).fill(0).map((_,m)=>`<option value="${m+1}" ${moisCDI===String(m+1)?'selected':''}>${M[m]}</option>`).join('')}
-              </select>
             </div>
           </div>`;});
         h+=`</div></div>`;
@@ -1389,7 +1378,9 @@ function collectFixed(){
   for(const[cn,comp]of Object.entries(S.data.companies)){
     for(const mag of comp.magasins){const ca25=mag.totalCA2025||100000;
       const nActifs=mag.vendeurs.filter(v=>isActiveInMonth(v.dateParti,S.selectedYear,S.mois)).length||1;
-      for(const v of mag.vendeurs){let tp=0;
+      for(const v of mag.vendeurs){
+        if(!isActiveInMonth(v.dateParti,S.selectedYear,S.mois))continue;
+        let tp=0;
         for(let m=0;m<12;m++){const ca=v.caSaisie?.[m]??v.caSheet?.[m];if(ca==null)continue;
           const formuleMois=getFormuleMois(comp,year,m,mag);const augm=formuleMois.augmentation??2;
           const obj=v.objSheet?.[m]||v.objManuel?.[m]||calcObj(ca25,augm,m);const primeMagC=calcPrime((ca/obj)*100,getPaliersMois(comp,m))*(v.tempsPartiel??100)/100;tp+=primeMagC;}
@@ -1438,6 +1429,7 @@ function renderVolantListPanel(){
   const all=[];
   for(const[cn,comp]of Object.entries(S.data.companies)){
     for(const v of (comp.volants||[])){
+      if(!isActiveInMonth(v.dateParti,S.selectedYear,S.mois))continue;
       const jours=(S.volantJours||[]).filter(vj=>vj.societe===cn&&vj.volant===v.nom).reduce((s,vj)=>s+vj.jours,0);
       const mags=[...new Set((S.volantJours||[]).filter(vj=>vj.societe===cn&&vj.volant===v.nom).map(vj=>vj.magasin))];
       all.push({nom:v.nom,societe:cn,manager:comp.manager||'',parti:!!v.parti,p25:v.p25||0,jours,mags});}}
@@ -1500,6 +1492,7 @@ function renderMagasinPanel(){
 
 // ══════ PANEL ARCHIVÉS dans Vendeurs & Magasins ══════
 function renderArchivesListPanel(){
+  const year=S.selectedYear||2025;
   let h='<div>';
   const companies=S.data?.companies||{};
 
@@ -1587,13 +1580,15 @@ function renderRecap(){
     const sd={name:cn,manager:comp.manager||'',magasins:[],
       totalYear:0,total25:0,total26:0,primesParMois:new Array(12).fill(0),
       nVend:0,nParti:0,nVolants:(comp.volants||[]).filter(v=>isActiveInMonth(v.dateParti,S.selectedYear,S.mois)).length,nAlternants:(comp.alternants||[]).filter(a=>isActiveInMonth(a.dateParti,S.selectedYear,S.mois)).length};
-    
+
     for(const mag of comp.magasins){
+      if(!isActiveInMonth(mag.dateFermeture,S.selectedYear,S.mois))continue;
       const ca25=mag.totalCA2025||100000;
       const nActifs=mag.vendeurs.filter(v=>isActiveInMonth(v.dateParti,S.selectedYear,S.mois)).length||1;
       const md={nom:mag.nom,manager:mag.manager||comp.manager||'',ca25,vendeurs:[],totalYear:0,primesParMois:new Array(12).fill(0)};
 
       for(const v of mag.vendeurs){
+        if(!isActiveInMonth(v.dateParti,S.selectedYear,S.mois))continue;
         let tp=0,tpReel=0,mc=0;const pm=new Array(12).fill(0);
         for(let m=0;m<12;m++){
           const formuleMois=getFormuleMois(comp,year,m,mag);
@@ -1606,7 +1601,7 @@ function renderRecap(){
 
         // Calculer primes année précédente
         let tpPrev=0;
-        if(year>2025){for(let m=0;m<12;m++){const formuleMois=getFormuleMois(comp,year-1,m,mag);const augm=formuleMois.augmentation??2;const ca=v.caSheetAuto?.[m]??v.caSaisie?.[m]??v.caSheet?.[m];const obj=v.objSheetAuto?.[m]??v.objManuel?.[m]??calcObj(ca25,augm,m);if(ca!=null){const primeMagR=calcPrime((ca/obj)*100,getPaliersMois(comp,year-1,m))*(v.tempsPartiel??100)/100;tpPrev+=primeMagR;}}} else {tpPrev=v.p25||0;}
+        if(year>2026){for(let m=0;m<12;m++){const formuleMois=getFormuleMois(comp,year-1,m,mag);const augm=formuleMois.augmentation??2;const ca=v.caSheetAuto?.[m]??v.caSaisie?.[m]??v.caSheet?.[m];const obj=v.objSheetAuto?.[m]??v.objManuel?.[m]??calcObj(ca25,augm,m);if(ca!=null){const primeMagR=calcPrime((ca/obj)*100,getPaliersMois(comp,year-1,m))*(v.tempsPartiel??100)/100;tpPrev+=primeMagR;}}} else {tpPrev=v.p25||0;}
 
         md.vendeurs.push({nom:v.nom,pPrev:tpPrev,pCurr:year===2026?tpReel:tp,pm,months:mc,parti:!!v.parti});
         if(!v.parti){md.totalYear+=tpForTotal;for(let m=0;m<12;m++)md.primesParMois[m]+=pm[m];}
@@ -1618,6 +1613,7 @@ function renderRecap(){
     
     // ══ AJOUTER LES PRIMES DES VOLANTS ═══════════════════════════════
     for(const vl of (comp.volants||[])){
+      if(!isActiveInMonth(vl.dateParti,S.selectedYear,S.mois))continue;
       if(!vl.parti){
         let p=0;let pReel=0;for(let m=0;m<12;m++){const pm=getVolantTotalPrimeMois(cn,comp,vl,m,year);p+=pm;if(year===2026&&m>=3)pReel+=pm;else if(year!==2026)pReel=p;}
         const pForTotal=year===2026?pReel:p;
@@ -1627,6 +1623,7 @@ function renderRecap(){
     }
     // ══ AJOUTER LES PRIMES DES ALTERNANTS ════════════════════════════════
     for(const alt of (comp.alternants||[])){
+      if(!isActiveInMonth(alt.dateParti,S.selectedYear,S.mois))continue;
       if(!alt.parti){
         let p=0;let pReel=0;for(let m=0;m<12;m++){const pm=getAlternantTotalPrimeMois(cn,comp,alt,m,year);p+=pm;if(year===2026&&m>=3)pReel+=pm;else if(year!==2026)pReel=p;}
         const pForTotal=year===2026?pReel:p;
@@ -2124,6 +2121,17 @@ function showAddAlternantModal(comp){
       <button class="btn" style="background:#16a34a;color:#fff" onclick="doAddAlternant('${comp}')">Ajouter</button>
     </div></div></div>`;render();}
 
+function showToggleAlternantPartiModal(comp,nom){
+  S.modal=`<div class="modal-bg" onclick="if(event.target===this){S.modal=null;render()}"><div class="modal">
+    <h3>Gestion de ${nom}</h3><div class="modal-sub">${comp}</div>
+    <p style="font-size:12px;color:var(--tx2);margin:12px 0">Que se passe-t-il pour cet alternant ?</p>
+    <div class="modal-btns" style="flex-direction:column;gap:8px">
+      <button class="btn" style="background:#ef4444;color:#fff;width:100%;text-align:left" onclick="confirmToggleAlternantParti('${esc(comp)}','${esc(nom)}','parti')">🚪 Départ de l'entreprise</button>
+      <button class="btn" style="background:#3b82f6;color:#fff;width:100%;text-align:left" onclick="confirmToggleAlternantParti('${esc(comp)}','${esc(nom)}','fixe')">📌 Passage en CDI Fixe</button>
+      <button class="btn" style="background:#8b5cf6;color:#fff;width:100%;text-align:left" onclick="confirmToggleAlternantParti('${esc(comp)}','${esc(nom)}','volant')">🚗 Passage en CDI Volant</button>
+      <button class="btn" style="background:#f1f5f9;color:var(--tx2);width:100%" onclick="S.modal=null;render()">Annuler</button>
+    </div></div></div>`;render();}
+
 // ══════ ACTIONS ══════
 window.saveApiUrl=v=>{API_URL=v.trim();localStorage.setItem('primes_api_url',API_URL);};
 
@@ -2303,6 +2311,8 @@ function applyCAToVendeurs(caDataMagasins){
       if(caMag && caMag.ca){
         mag.evolutionN1 = caMag.evolution || null;
         mag.caN1        = caMag.caN1      || null;
+        // Calculer le CA total annuel
+        mag.totalCA2025 = caMag.ca.reduce((sum, ca) => sum + (ca || 0), 0);
         for(const v of mag.vendeurs){
           if(!v.caSheetAuto)v.caSheetAuto={};
           if(!v.objSheetAuto)v.objSheetAuto={};
@@ -2630,6 +2640,39 @@ window.doReactiverVolant=async(comp,nom)=>{
 window.doReactiverAlternant=async(comp,nom)=>{
   const c=S.data.companies[comp];const a=c?.alternants?.find(x=>x.nom===nom);
   optimisticUpdate(()=>{if(a){a.dateParti=null;a.parti=false;}},()=>api('toggle_alternant_parti',{societe:comp,alternant:nom,parti:'0'}),nom+' est de retour');
+};
+
+window.doToggleAlternantParti=async(comp,nom)=>{
+  showToggleAlternantPartiModal(comp,nom);
+};
+
+window.confirmToggleAlternantParti=async(comp,nom,action)=>{
+  const c=S.data.companies[comp];
+  const a=c?.alternants?.find(x=>x.nom===nom);
+  if(!a){S.modal=null;return;}
+
+  if(action==='parti'){
+    const dateStr=prompt('Date de départ (mm/yyyy):','03/2025');
+    if(!dateStr){S.modal=null;return;}
+    const [mo,an]=dateStr.split('/');
+    const dateParti=`${an}-${mo.padStart(2,'0')}`;
+    optimisticUpdate(()=>{a.dateParti=dateParti;a.parti=true;},()=>api('toggle_alternant_parti',{societe:comp,alternant:nom,parti:'1',dateParti}),nom+' a quitté');
+  }else if(action==='fixe'||action==='volant'){
+    const dateStr=prompt('Date de transition CDI (mm/yyyy):','03/2025');
+    if(!dateStr){S.modal=null;return;}
+    const [mo,an]=dateStr.split('/');
+    const dateCDI=`${an}-${mo.padStart(2,'0')}`;
+    let magasinAfterCDI='';
+    if(action==='fixe'){
+      const mags=c?.magasins?.map(m=>m.nom).filter(m=>m!=='Non assigné')||[];
+      if(mags.length){
+        magasinAfterCDI=prompt('Magasin d\'affectation:',mags[0])||'';
+      }
+      if(!magasinAfterCDI){S.modal=null;return;}
+    }
+    optimisticUpdate(()=>{a.dateCDI=dateCDI;a.typeAfterCDI=action;a.magasinAfterCDI=magasinAfterCDI;},()=>api('save_alternant_cdi',{societe:comp,alternant:nom,dateCDI,typeAfterCDI:action,magasinAfterCDI}),nom+' passe en CDI '+action);
+  }
+  S.modal=null;
 };
 
 window.doAssignMagasin=async(comp,nom,newMagasin)=>{
