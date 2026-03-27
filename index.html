@@ -283,16 +283,16 @@ const filterNormalMagasins = (magasins) => {
   return magasins.filter(m => {
     if(isSystemMagasin(m.nom))return false;
     if(!m.dateFermeture)return true;
-    if(S.mois==='all')return true;
     const [yearFerm,monthFerm,dayFerm]=(m.dateFermeture.split('-')||[]).map(Number);
     if(!yearFerm||!monthFerm)return true;
-    
+
     // Si on est avant l'année de fermeture, afficher le magasin
     if(year<yearFerm)return true;
     // Si on est après l'année de fermeture, NE PAS afficher
     if(year>yearFerm)return false;
-    // Si on est dans l'année de fermeture, vérifier le mois
+    // Si on est dans l'année de fermeture, vérifier le mois (ou afficher tout si mode annuel)
     if(year===yearFerm){
+      if(S.mois==='all')return true; // Mode annuel: afficher si l'année correspond
       const currentDate=new Date(year,mois,1).getTime();
       const fermetureDate=new Date(yearFerm,monthFerm-1,dayFerm||1).getTime();
       return currentDate<fermetureDate;
@@ -304,11 +304,17 @@ const filterNormalMagasins = (magasins) => {
 // ═══ Helper : vérifie si un élément (vendeur/volant/alternant) est actif au mois sélectionné ═══
 function isActiveInMonth(dateParti, selectedYear, moisStr) {
   if(!dateParti) return true;
-  if(moisStr === 'all') return true;
   const [yearParti, moisParti] = dateParti.split('-').map(Number);
-  const moisActuel = parseInt(moisStr);
+
+  // Avant l'année de départ/fermeture: actif
   if(selectedYear < yearParti) return true;
+  // Après l'année de départ/fermeture: inactif
   if(selectedYear > yearParti) return false;
+
+  // Même année: vérifier le mois
+  if(moisStr === 'all') return true; // Mode annuel: afficher si l'année correspond
+
+  const moisActuel = parseInt(moisStr);
   return moisActuel + 1 < moisParti; // visible jusqu'AU mois de départ (exclu)
 }
 
@@ -1120,23 +1126,23 @@ function renderVolSection(comp){
     }}
   return h+'</div>';}
 
-function renderPartisSection(comp, companyName){
+function renderPartisSection(comp, companyName, year){
   // Collecter tous les vendeurs partis (fixes et volants)
   const partis = [];
   for(const mag of comp.magasins){
     for(const v of mag.vendeurs){
-      if(v.parti){
+      if(v.parti && v.dateParti && v.dateParti.startsWith(String(year))){
         partis.push({nom: v.nom, p25: v.p25, magasinOrigine: mag.nom, type: 'fixe'});
       }
     }
   }
   for(const vl of (comp.volants||[])){
-    if(vl.parti){
+    if(vl.parti && vl.dateParti && vl.dateParti.startsWith(String(year))){
       partis.push({nom: vl.nom, p25: vl.p25, magasinOrigine: 'Volant', type: 'volant'});
     }
   }
   for(const alt of (comp.alternants||[])){
-    if(alt.parti){
+    if(alt.parti && alt.dateParti && alt.dateParti.startsWith(String(year))){
       partis.push({nom: alt.nom, p25: alt.p25, magasinOrigine: alt.magasin||'Alternant', type: 'alternant'});
     }
   }
@@ -1810,7 +1816,7 @@ function renderRecapAnnuel(socData,year,selectedSoc='all'){
     
     // Ajouter section vendeurs partis (comp déjà déclaré ligne 1014)
     if(comp){
-      const partisHTML = renderPartisSection(comp, cn);
+      const partisHTML = renderPartisSection(comp, cn, year);
       if(partisHTML){
         h += partisHTML;
       }
