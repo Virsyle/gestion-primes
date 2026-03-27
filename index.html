@@ -2466,19 +2466,67 @@ window.doCopyMoisPaliers=async(comp,moisSource)=>{
   }catch(e){toast('Erreur: '+e.message);}
 };
 
+// ══ RECALCUL OPTIMISTE DES OBJECTIFS ══════════════════════════════════════════════════════
+function recalculateObjectivesWithNewAugmentation(comp, year) {
+  const compData = S.data.companies[comp];
+  if (!compData) return;
+
+  for (const mag of compData.magasins) {
+    if (!mag.vendeurs || !mag.caN1 || !mag.evolutionN1) continue;
+
+    for (const v of mag.vendeurs) {
+      if (!v.caSheetAuto) continue;
+
+      for (let m = 0; m < 12; m++) {
+        const ca = v.caSheetAuto[m];
+        const caN1 = mag.caN1[m];
+        const evolutionN1 = mag.evolutionN1[m];
+
+        if (!ca || caN1 == null || evolutionN1 == null) continue;
+
+        // Récupérer la formule CORRECTE pour ce magasin/mois (inclut l'augmentation du magasin)
+        const formule = getFormuleMois(compData, year, m, mag);
+        const py1 = formule.poidsY1 ?? 70;
+        const pm1 = formule.poidsM1 ?? 30;
+        const augmentation = formule.augmentation ?? 2;  // ← L'augmentation correcte pour ce magasin!
+
+        // Recalculer l'objectif avec l'augmentation du magasin
+        const caM1 = v.caSheetAuto[m - 1] || ca;
+        const evolution = evolutionN1 / 100; // convertir du % en ratio
+        const objective = (py1 / 100) * (caM1 * evolution) + (pm1 / 100) * caN1;
+        const objectiveWithAug = objective * (1 + (augmentation / 100));
+
+        // Mettre à jour immédiatement
+        if (!v.objSheetAuto) v.objSheetAuto = {};
+        v.objSheetAuto[m] = Math.round(objectiveWithAug);
+      }
+    }
+  }
+}
+
 window.doSaveFormule=async(comp,year,y1,m1,aug)=>{
   const augVal=parseFloat(aug);
   const augToSave=(augVal!=null&&!isNaN(augVal))?augVal:2;
-  optimisticUpdate(()=>{
-    if(!S.data.companies[comp].formules)S.data.companies[comp].formules={};
-    if(Array.isArray(S.data.companies[comp].formules[year])){
-    } else {
-      S.data.companies[comp].formules[year]={poidsY1:parseInt(y1)||70,poidsM1:parseInt(m1)||30,augmentation:augToSave};
-    }
-    S.data.companies[comp].poidsY1=parseInt(y1)||70;
-    S.data.companies[comp].poidsM1=parseInt(m1)||30;
-    S.data.companies[comp].augmentation=augToSave;
-  },()=>api('save_augmentation',{societe:comp,augmentation:augToSave,poidsY1:y1,poidsM1:m1}),'Formule sauvegardée pour '+year);
+
+  // Mise à jour locale immédiate
+  if(!S.data.companies[comp].formules)S.data.companies[comp].formules={};
+  if(!Array.isArray(S.data.companies[comp].formules[year])){
+    S.data.companies[comp].formules[year]={poidsY1:parseInt(y1)||70,poidsM1:parseInt(m1)||30,augmentation:augToSave};
+  }
+  S.data.companies[comp].poidsY1=parseInt(y1)||70;
+  S.data.companies[comp].poidsM1=parseInt(m1)||30;
+  S.data.companies[comp].augmentation=augToSave;
+
+  // Recalcul immédiat des objectifs (nanoseconde)
+  recalculateObjectivesWithNewAugmentation(comp, year);
+  render(); // Affiche immédiatement
+
+  // Recharge en arrière-plan
+  try{
+    await api('save_augmentation',{societe:comp,augmentation:augToSave,poidsY1:y1,poidsM1:m1});
+    await loadCAData(); // Recharge depuis le sheet pour confirmer
+    toast('✅ Formule sauvegardée pour '+year);
+  }catch(e){toast('❌ Erreur: '+e.message);}
 };
 
 let formuleMoisTimeout={};
@@ -2496,12 +2544,19 @@ window.doSaveFormuleMois=async(comp,year,mois,y1,m1,aug)=>{
     }
   }
   S.data.companies[comp].formules[year][mois]={poidsY1:parseInt(y1)||70,poidsM1:parseInt(m1)||30,augmentation:augToSave};
-  render();
+
+  // Recalcul immédiat des objectifs (nanoseconde)
+  recalculateObjectivesWithNewAugmentation(comp, year);
+  render(); // Affiche immédiatement
 
   const key=`${comp}-${year}-${mois}`;
   clearTimeout(formuleMoisTimeout[key]);
-  formuleMoisTimeout[key]=setTimeout(()=>{
-    optimisticUpdate(()=>{},()=>api('save_augmentation',{societe:comp,augmentation:augToSave,poidsY1:y1,poidsM1:m1}),'Formule sauvegardée pour '+M[mois]);
+  formuleMoisTimeout[key]=setTimeout(async ()=>{
+    try{
+      await api('save_augmentation',{societe:comp,augmentation:augToSave,poidsY1:y1,poidsM1:m1});
+      await loadCAData();
+      toast('✅ Formule sauvegardée pour '+M[mois]);
+    }catch(e){toast('❌ Erreur: '+e.message);}
   },1000);
 };
 
@@ -2509,11 +2564,22 @@ window.doSaveFormuleMag=async(comp,magNom,year,mois,y1,m1,aug)=>{
   const augVal=parseFloat(aug);
   const augToSave=(augVal!=null&&!isNaN(augVal))?augVal:2;
   const mag=S.data.companies[comp]?.magasins.find(x=>x.nom===magNom);if(!mag)return;
-  optimisticUpdate(()=>{
-    if(!mag.formules)mag.formules={};
-    if(!mag.formules[year])mag.formules[year]=new Array(12).fill(null);
-    mag.formules[year][mois]={poidsY1:parseInt(y1)||70,poidsM1:parseInt(m1)||30,augmentation:augToSave};
-  },()=>api('save_formule_magasin',{societe:comp,magasin:magNom,year,mois,poidsY1:y1,poidsM1:m1,augmentation:augToSave}),'Formule magasin sauvegardée');
+
+  // Mise à jour locale immédiate
+  if(!mag.formules)mag.formules={};
+  if(!mag.formules[year])mag.formules[year]=new Array(12).fill(null);
+  mag.formules[year][mois]={poidsY1:parseInt(y1)||70,poidsM1:parseInt(m1)||30,augmentation:augToSave};
+
+  // Recalcul immédiat des objectifs (nanoseconde)
+  recalculateObjectivesWithNewAugmentation(comp, year);
+  render(); // Affiche immédiatement
+
+  // Recharge en arrière-plan
+  try{
+    await api('save_formule_magasin',{societe:comp,magasin:magNom,year,mois,poidsY1:y1,poidsM1:m1,augmentation:augToSave});
+    await loadCAData();
+    toast('✅ Formule magasin sauvegardée');
+  }catch(e){toast('❌ Erreur: '+e.message);}
 };
 
 window.doResetFormuleMag=async(comp,magNom,year,mois)=>{
