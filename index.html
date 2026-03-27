@@ -604,8 +604,6 @@ function renderTotals2025Banner(){
 
   for(const[cn,comp]of Object.entries(comps)){
     let totalYear=0;let totalSimule=0;let totalReel=0;
-    const compFormule=comp.formules?.[year]||formule;
-    const augm=(compFormule.augmentation!=null?compFormule.augmentation:2);
 
     // Vendeurs fixes
     for(const mag of comp.magasins){
@@ -617,7 +615,9 @@ function renderTotals2025Banner(){
         for(let m=0;m<12;m++){
           const ca=v.caSheetAuto?.[m]??v.caSaisie?.[m];
           if(ca==null)continue;
-          const obj=v.objSheetAuto?.[m]??v.objManuel?.[m]??calcObj(ca25,augm,m);
+          const formuleMois=getFormuleMois(comp,year,m,mag);
+          const augm=formuleMois.augmentation??2;
+          const obj=v.objManuel?.[m]??v.objSheetAuto?.[m]??calcObj(ca25,augm,m);
           const primeMag=calcPrime((ca/obj)*100,getPaliersMois(comp,m))*(v.tempsPartiel??100)/100;
           tp+=primeMag;
           if(year===2026){
@@ -772,7 +772,15 @@ function renderFormule(comp){
 
   // Si S.mois === 'all', afficher la formule par défaut (tous les mois)
   if(S.mois==='all'){
-    const formule=comp.formules?.[year]||{poidsY1:comp.poidsY1??70,poidsM1:comp.poidsM1??30,augmentation:(comp.augmentation!=null?comp.augmentation:2)};
+    let formule=comp.formules?.[year];
+    // Si formules[year] est un Array (formules mensuelles), utiliser les valeurs globales
+    if(Array.isArray(formule)){
+      formule={poidsY1:comp.poidsY1??70,poidsM1:comp.poidsM1??30,augmentation:comp.augmentation??2};
+    }
+    // Si toujours pas de formule, utiliser les valeurs par défaut
+    if(!formule){
+      formule={poidsY1:comp.poidsY1??70,poidsM1:comp.poidsM1??30,augmentation:(comp.augmentation!=null?comp.augmentation:2)};
+    }
     const py1=formule.poidsY1??70;
     const pm1=formule.poidsM1??30;
     const aug=(formule.augmentation!=null?formule.augmentation:2);
@@ -862,7 +870,7 @@ function renderStats(comp, type='fixes'){
           const storeCa=firstV.caSheetAuto?.[m]??firstV.caSaisie?.[m];
           if(!storeCa||storeCa<=0){sous++;continue;}
           const formuleMois=getFormuleMois(comp,year,m,mag);const augm=(formuleMois.augmentation!=null?formuleMois.augmentation:2);
-          const storeObj=firstV.objSheetAuto?.[m]??firstV.objManuel?.[m]??calcObj(magCa25,augm,m);
+          const storeObj=firstV.objManuel?.[m]??firstV.objSheetAuto?.[m]??calcObj(magCa25,augm,m);
           const t=(storeCa/storeObj)*100;
           const palM=getPaliersMois(comp,m);
           let matched=false;
@@ -881,6 +889,25 @@ function renderStats(comp, type='fixes'){
       if(alt.parti)continue;
       for(const m of moisToCheck){
         total+=getAlternantTotalPrimeMois(cn,comp,alt,m,year);
+        const ajsInStore=(S.alternantJours||[]).filter(x=>x.societe===cn&&x.alternant===alt.nom&&x.mois===m&&x.jours>0);
+        for(const aj of ajsInStore){
+          const mag=comp.magasins.find(mg=>mg.nom===aj.magasin);if(!mag){sous++;continue;}
+          const magCa25=mag.totalCA2025||100000;
+          const firstV=mag.vendeurs[0];if(!firstV){sous++;continue;}
+          const storeCa=firstV.caSheetAuto?.[m]??firstV.caSaisie?.[m];
+          if(!storeCa||storeCa<=0){sous++;continue;}
+          const formuleMois=getFormuleMois(comp,year,m,mag);const augm=(formuleMois.augmentation!=null?formuleMois.augmentation:2);
+          const storeObj=firstV.objManuel?.[m]??firstV.objSheetAuto?.[m]??calcObj(magCa25,augm,m);
+          const t=(storeCa/storeObj)*100;
+          const palM=getPaliersMois(comp,m);
+          let matched=false;
+          for(let pi=palM.length-1;pi>=0;pi--){
+            const pp=palM[pi];const op=pp.operateur||'>=';
+            let ok=false;if(op==='>=')ok=t>=pp.seuil;else if(op==='<=')ok=t<=pp.seuil;else if(op==='>')ok=t>pp.seuil;else ok=t<pp.seuil;
+            if(ok){pc[pi]++;matched=true;break;}
+          }
+          if(!matched)sous++;
+        }
       }
     }
   } else {
@@ -898,7 +925,7 @@ function renderStats(comp, type='fixes'){
           if(ca!=null){
             hasCA=true;count++;
             const formuleMois=getFormuleMois(comp,year,m,mag);const augm=(formuleMois.augmentation!=null?formuleMois.augmentation:2);
-            const obj=v.objSheetAuto?.[m]??v.objManuel?.[m]??calcObj(ca25,augm,m);
+            const obj=v.objManuel?.[m]??v.objSheetAuto?.[m]??calcObj(ca25,augm,m);
             const t=(ca/obj)*100;const palM=getPaliersMois(comp,m);const pr=calcPrime(t,palM)*(v.tempsPartiel??100)/100;total+=pr;
             let matched=false;
             for(let pi=palM.length-1;pi>=0;pi--){
@@ -918,14 +945,17 @@ function renderStats(comp, type='fixes'){
   const totVol=(comp.volants||[]).filter(v=>isActiveInMonth(v.dateParti,S.selectedYear,S.mois)).length;
   
   let h=`<div class="stats">
-    <div class="st st-dark"><small>Coût simulé</small><b>${fmtE(total)}</b></div>
+    <div class="st st-dark"><small>Coût</small><b>${fmtE(total)}</b></div>
     <div class="st" style="background:#eff6ff"><small style="color:#1d4ed8">Fixes actifs</small><b style="color:var(--blu)">${type==='volants'?0:totV}</b></div>
     <div class="st" style="background:#f5f3ff"><small style="color:var(--vol)">Volants actifs</small><b style="color:var(--vol)">${type==='volants'?totVol:0}</b></div>
     <div class="st" style="background:#fef2f2"><small style="color:#991b1b">Hors palier</small><b style="color:var(--red)">${sous}</b></div>`;
   paliersRef.forEach((p,i)=>{const op=p.operateur||'>=';const opS=OPS.find(o=>o.val===op)?.short||'≥';
-    const bg=i===paliersRef.length-1?'background:#f0fdf4':'background:#f8fafc';
-    const cl=i===paliersRef.length-1?'color:var(--grn)':'';
-    h+=`<div class="st" style="${bg}"><small>${opS}${p.seuil}%</small><b style="${cl}">${pc[i]||0}</b><span>${p.prime}€</span></div>`;});
+    const colorClass=tc(p.seuil);
+    const bgColors={g:'#f0fdf4',b:'#eff6ff',o:'#fff7ed',r:'#fef2f2'};
+    const textColors={g:'var(--grn)',b:'var(--blu)',o:'var(--org)',r:'var(--red)'};
+    const bgStyle=colorClass?`background:${bgColors[colorClass]}`:'background:#f8fafc';
+    const colorStyle=colorClass?`color:${textColors[colorClass]}`:'';
+    h+=`<div class="st" style="${bgStyle}"><small style="opacity:.7">${opS}${p.seuil}%</small><b style="${colorStyle}">${pc[i]||0}</b><span>${p.prime}€</span></div>`;});
   return h+'</div>';}
 
 function renderMonthBar(){
@@ -941,7 +971,7 @@ function renderMag(mag,mi,comp){
   const badgeFerm=mag.dateFermeture?`<span style="background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600">FERMÉ ${mag.dateFermeture}</span>`:'';
   let h=`<div class="mag" data-vendeur="${esc(mag.nom)}"><div class="mag-h"><div>
     <div class="mag-name">🏬 ${mag.nom} ${badgeFerm}</div>
-    <div class="mag-sub">CA réalisé : ${fmtE(ca25)}</div>
+    <div class="mag-sub">Cumul CA : ${fmtE(ca25)}</div>
   </div><div style="display:flex;gap:6px;flex-wrap:wrap">
     <button class="btn btn-sm" style="background:#f8fafc;border:1px solid var(--brd);color:var(--tx2)" onclick="showEditMagModal('${ac}','${esc(mag.nom)}')">✏️ Modifier</button>
     <button class="btn btn-sm" style="background:#fef3c7;border:1px solid var(--brd);color:#92400e" onclick="doFermerMagasin('${ac}','${esc(mag.nom)}')">🚪 Fermé</button>
@@ -958,7 +988,7 @@ function renderMag(mag,mi,comp){
     const displayName=S.mois==='all'?v.nom:getVendeurName(v,parseInt(S.mois),year);
     let tp=0;for(let m=0;m<12;m++){const ca=v.caSheetAuto?.[m]??v.caSaisie?.[m];if(ca==null)continue;
       const formuleMois=getFormuleMois(comp,year,m,mag);const augm=(formuleMois.augmentation!=null?formuleMois.augmentation:2);
-      const obj=v.objSheetAuto?.[m]??v.objManuel?.[m]??calcObj(ca25,augm,m);const primeMag0=calcPrime((ca/obj)*100,getPaliersMois(comp,m))*(v.tempsPartiel??100)/100;tp+=primeMag0;}    h+=`<div class="vend${isP?' parti-vend':''}"><div class="vend-h">
+      const obj=v.objManuel?.[m]??v.objSheetAuto?.[m]??calcObj(ca25,augm,m);const primeMag0=calcPrime((ca/obj)*100,getPaliersMois(comp,m))*(v.tempsPartiel??100)/100;tp+=primeMag0;}    h+=`<div class="vend${isP?' parti-vend':''}"><div class="vend-h">
       <div class="vend-name-wrap"><span class="vend-name">${displayName}</span><span class="badge-fixe">FIXE</span>${isP?'<span class="badge-parti">PARTI</span>':''}<span style="display:flex;align-items:center;gap:3px;font-size:11px;color:var(--tx2);background:#f8fafc;border:1px solid var(--brd);border-radius:6px;padding:2px 6px">⏱<input type="number" min="0" max="100" style="width:38px;border:none;background:none;font-size:11px;text-align:center;font-weight:700;padding:0" value="${v.tempsPartiel??100}" onchange="doSaveTempsPartiel('${ac}','${esc(mag.nom)}','${esc(v.nom)}',this.value)" title="Temps de travail (%)">%</span></div>
       ${mag.nom==='Non assigné' && !isP?`<div style="margin-top:6px"><input type="text" placeholder="Magasin" value="${v.magasinTemporaire||''}" onchange="doAssignMagasin('${ac}','${esc(v.nom)}',this.value)" style="padding:6px;border:1px solid var(--brd);border-radius:4px;width:150px"/></div>`:''}
       <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">
@@ -972,14 +1002,15 @@ function renderMag(mag,mi,comp){
       h+=`<div class="mgrid">`;
       months.forEach(m=>{
         const formuleMois=getFormuleMois(comp,year,m,mag);const augm=(formuleMois.augmentation!=null?formuleMois.augmentation:2);
-        const obj=v.objSheetAuto?.[m]??v.objManuel?.[m]??calcObj(ca25,augm,m);const ca=v.caSheetAuto?.[m]??v.caSaisie?.[m];
+        const obj=v.objManuel?.[m]??v.objSheetAuto?.[m]??calcObj(ca25,augm,m);const ca=v.caSheetAuto?.[m]??v.caSaisie?.[m];
         const taux=ca!=null?(ca/obj)*100:null;const primeMagM=calcPrime(taux,getPaliersMois(comp,m))*(v.tempsPartiel??100)/100;const prime=primeMagM;const c=tc(taux);
         const w=S.mois!=='all'?' wide':'';
-        h+=`<div class="mc${w} ${c?'bg-'+c:''}">
+        const primeColor=c?'tx-'+c:(prime>0?'var(--grn)':'var(--tx3)');
+        h+=`<div class="mc${w}">
           <div class="mc-lbl">${MS[m]}</div>
           <div class="mc-obj">Obj: ${fmt(obj)} <span style="font-size:8px;cursor:pointer;color:var(--acc)" onclick="showObjModal('${ac}','${esc(mag.nom)}','${esc(v.nom)}',${m},${obj})">✏️</span></div>
-          <input type="number" placeholder="CA réalisé" value="${ca!=null?ca:''}" onchange="doSaveCA('${ac}','${esc(mag.nom)}','${esc(v.nom)}',${m},this.value)"/>
-          ${taux!=null?`<div class="mc-res"><span class="tx-${c}">${taux.toFixed(1)}%</span><span style="color:${prime>0?'var(--grn)':'var(--tx3)'}">${fmtPrime(prime)}</span></div>`:''}
+          <input type="number" placeholder="Cumul CA" value="${ca!=null?ca:''}" onchange="doSaveCA('${ac}','${esc(mag.nom)}','${esc(v.nom)}',${m},this.value)"/>
+          ${taux!=null?`<div class="mc-res"><span class="tx-${c}">${taux.toFixed(1)}%</span><span class="${primeColor}">${fmtPrime(prime)}</span></div>`:''}
         </div>`;});
       if(S.mois!=='all'){const mi2=parseInt(S.mois);
         const vJs=(S.volantJours||[]).filter(vj=>vj.societe===S.activeComp&&vj.magasin===mag.nom&&vj.mois===mi2);
@@ -1029,7 +1060,7 @@ function renderVolSection(comp){
         const storeCa=firstV.caSheetAuto?.[mIdx]??firstV.caSaisie?.[mIdx];
         if(!storeCa||storeCa<=0)return 0;
         const fmois=getFormuleMois(comp,year,mIdx,mag);const augm=(fmois.augmentation!=null?fmois.augmentation:2);
-        const storeObj=firstV.objSheetAuto?.[mIdx]??firstV.objManuel?.[mIdx]??calcObj(magCa25,augm,mIdx);
+        const storeObj=firstV.objManuel?.[mIdx]??firstV.objSheetAuto?.[mIdx]??calcObj(magCa25,augm,mIdx);
         const primeMag=calcPrime((storeCa/storeObj)*100,getPaliersMois(comp,mIdx));
         if(primeMag<=0)return 0;
         const vj=(S.volantJours||[]).find(x=>x.societe===cn&&x.volant===volNom&&x.magasin===mag.nom&&x.mois===mIdx);
@@ -1058,7 +1089,7 @@ function renderVolSection(comp){
         const firstV=mag.vendeurs[0];
         const storeCa=firstV?(firstV.caSheetAuto?.[mIdx]??firstV.caSaisie?.[mIdx]):null;
         const fmoisV=getFormuleMois(comp,year,mIdx);const augmV=(fmoisV.augmentation!=null?fmoisV.augmentation:2);
-        const storeObj=firstV?(firstV.objSheetAuto?.[mIdx]??firstV.objManuel?.[mIdx]??calcObj(magCa25,augmV,mIdx)):calcObj(magCa25,augmV,mIdx);
+        const storeObj=firstV?(firstV.objManuel?.[mIdx]??firstV.objSheetAuto?.[mIdx]??calcObj(magCa25,augmV,mIdx)):calcObj(magCa25,augmV,mIdx);
         const storeTaux=storeCa!=null?(storeCa/storeObj)*100:null;
         const cMag=tc(storeTaux);
         h+=`<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;color:var(--tx2);margin-bottom:6px">📍 ${mag.nom}</div><div class="mgrid">`;
@@ -1067,10 +1098,11 @@ function renderVolSection(comp){
           const joursVol=vj?vj.jours:null;
           const prime=primVolMag(v.nom,mag);
           const participation=joursVol!=null?(joursVol/(diviseurParVolant[v.nom]||1))*100:null;
+          const primeColorVol=cMag?'tx-'+cMag:(prime>0?'var(--grn)':'var(--tx3)');
           h+=`<div class="mc wide ${cMag?'bg-'+cMag:''}">
             <div class="mc-lbl" style="color:var(--vol)">${v.nom.split(' ')[0]}</div>
             <input type="number" placeholder="Jours" value="${joursVol!=null?joursVol:''}" onchange="doSaveVolantJours('${ac}','${esc(v.nom)}','${esc(mag.nom)}',${mIdx},this.value)"/>
-            ${joursVol!=null?`<div class="mc-res"><span class="tx-${cMag}">${participation!=null?participation.toFixed(1)+'%':''}</span><span style="color:${prime>0?'var(--grn)':'var(--tx3)'}">${fmtPrime(prime)}</span></div>`:''}
+            ${joursVol!=null?`<div class="mc-res"><span class="tx-${cMag}">${participation!=null?participation.toFixed(1)+'%':''}</span><span class="${primeColorVol}">${fmtPrime(prime)}</span></div>`:''}
           </div>`;});
         h+=`</div></div>`;});
       // Total mensuel par volant
@@ -1237,7 +1269,7 @@ function renderAlternantSection(comp){
           const storeCa=firstV.caSheetAuto?.[mIdx]??firstV.caSaisie?.[mIdx];
           if(!storeCa||storeCa<=0)return 0;
           const fmois=getFormuleMois(comp,year,mIdx,mag);const augm=(fmois.augmentation!=null?fmois.augmentation:2);
-          const storeObj=firstV.objSheetAuto?.[mIdx]??firstV.objManuel?.[mIdx]??calcObj(magCa25,augm,mIdx);
+          const storeObj=firstV.objManuel?.[mIdx]??firstV.objSheetAuto?.[mIdx]??calcObj(magCa25,augm,mIdx);
           const primeMag=calcPrime((storeCa/storeObj)*100,getPaliersMois(comp,mIdx));
           if(primeMag<=0)return 0;
           const aj=(S.alternantJours||[]).find(x=>x.societe===cn&&x.alternant===altNom&&x.magasin===mag.nom&&x.mois===mIdx);
@@ -1252,7 +1284,7 @@ function renderAlternantSection(comp){
           const firstV=mag.vendeurs[0];
           const storeCa=firstV?(firstV.caSheetAuto?.[mIdx]??firstV.caSaisie?.[mIdx]):null;
           const fmoisA=getFormuleMois(comp,year,mIdx);const augmA=(fmoisA.augmentation!=null?fmoisA.augmentation:2);
-          const storeObj=firstV?(firstV.objSheetAuto?.[mIdx]??firstV.objManuel?.[mIdx]??calcObj(magCa25,augmA,mIdx)):calcObj(magCa25,augmA,mIdx);
+          const storeObj=firstV?(firstV.objManuel?.[mIdx]??firstV.objSheetAuto?.[mIdx]??calcObj(magCa25,augmA,mIdx)):calcObj(magCa25,augmA,mIdx);
           const storeTaux=storeCa!=null?(storeCa/storeObj)*100:null;
           const cMag=tc(storeTaux);
           h+=`<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;color:var(--tx2);margin-bottom:6px">📍 ${mag.nom}</div><div class="mgrid">`;
@@ -1261,10 +1293,11 @@ function renderAlternantSection(comp){
             const joursAlt=aj?aj.jours:null;
             const prime=primAltMag(a.nom,mag);
             const participation=joursAlt!=null?(joursAlt/(diviseurParAlt[a.nom]||1))*100:null;
+            const primeColorAlt=cMag?'tx-'+cMag:(prime>0?'var(--grn)':'var(--tx3)');
             h+=`<div class="mc wide ${cMag?'bg-'+cMag:''}">
               <div class="mc-lbl" style="color:#16a34a">${a.nom.split(' ')[0]}</div>
               <input type="number" placeholder="Jours" value="${joursAlt!=null?joursAlt:''}" onchange="doSaveAlternantJoursMagasin('${ac}','${esc(a.nom)}','${esc(mag.nom)}',${mIdx},this.value)"/>
-              ${joursAlt!=null?`<div class="mc-res"><span class="tx-${cMag}">${participation!=null?participation.toFixed(1)+'%':''}</span><span style="color:${prime>0?'var(--grn)':'var(--tx3)'}">${fmtPrime(prime)}</span></div>`:''}
+              ${joursAlt!=null?`<div class="mc-res"><span class="tx-${cMag}">${participation!=null?participation.toFixed(1)+'%':''}</span><span class="${primeColorAlt}">${fmtPrime(prime)}</span></div>`:''}
             </div>`;});
           h+=`</div></div>`;});
         h+=`</div></div>`;
@@ -1393,7 +1426,7 @@ function collectFixed(){
         let tp=0;
         for(let m=0;m<12;m++){const ca=v.caSaisie?.[m]??v.caSheet?.[m];if(ca==null)continue;
           const formuleMois=getFormuleMois(comp,year,m,mag);const augm=(formuleMois.augmentation!=null?formuleMois.augmentation:2);
-          const obj=v.objSheet?.[m]||v.objManuel?.[m]||calcObj(ca25,augm,m);const primeMagC=calcPrime((ca/obj)*100,getPaliersMois(comp,m))*(v.tempsPartiel??100)/100;tp+=primeMagC;}
+          const obj=v.objManuel?.[m]??v.objSheetAuto?.[m]??calcObj(ca25,augm,m);const primeMagC=calcPrime((ca/obj)*100,getPaliersMois(comp,m))*(v.tempsPartiel??100)/100;tp+=primeMagC;}
         all.push({nom:v.nom,societe:cn,magasin:mag.nom,manager:mag.manager||comp.manager||'',parti:!!v.parti,p26:tp,p25:v.p25||0});}}}
   return all;}
 
@@ -1604,14 +1637,14 @@ function renderRecap(){
           const formuleMois=getFormuleMois(comp,year,m,mag);
           const augm=(formuleMois.augmentation!=null?formuleMois.augmentation:2);
           const ca=v.caSheetAuto?.[m]??v.caSaisie?.[m]??v.caSheet?.[m];
-          const obj=v.objSheetAuto?.[m]??v.objManuel?.[m]??calcObj(ca25,augm,m);
+          const obj=v.objManuel?.[m]??v.objSheetAuto?.[m]??calcObj(ca25,augm,m);
           if(ca!=null){mc++;const primeMagR=calcPrime((ca/obj)*100,getPaliersMois(comp,m))*(v.tempsPartiel??100)/100;const pr=primeMagR;tp+=pr;pm[m]=pr;if(year===2026&&m>=3)tpReel+=pr;else if(year!==2026)tpReel=tp;}}
 
         const tpForTotal=year===2026?tpReel:tp;
 
         // Calculer primes année précédente
         let tpPrev=0;
-        if(year>2026){for(let m=0;m<12;m++){const formuleMois=getFormuleMois(comp,year-1,m,mag);const augm=(formuleMois.augmentation!=null?formuleMois.augmentation:2);const ca=v.caSheetAuto?.[m]??v.caSaisie?.[m]??v.caSheet?.[m];const obj=v.objSheetAuto?.[m]??v.objManuel?.[m]??calcObj(ca25,augm,m);if(ca!=null){const primeMagR=calcPrime((ca/obj)*100,getPaliersMois(comp,year-1,m))*(v.tempsPartiel??100)/100;tpPrev+=primeMagR;}}} else {tpPrev=v.p25||0;}
+        if(year>2026){for(let m=0;m<12;m++){const formuleMois=getFormuleMois(comp,year-1,m,mag);const augm=(formuleMois.augmentation!=null?formuleMois.augmentation:2);const ca=v.caSheetAuto?.[m]??v.caSaisie?.[m]??v.caSheet?.[m];const obj=v.objManuel?.[m]??v.objSheetAuto?.[m]??calcObj(ca25,augm,m);if(ca!=null){const primeMagR=calcPrime((ca/obj)*100,getPaliersMois(comp,year-1,m))*(v.tempsPartiel??100)/100;tpPrev+=primeMagR;}}} else {tpPrev=v.p25||0;}
 
         md.vendeurs.push({nom:v.nom,pPrev:tpPrev,pCurr:year===2026?tpReel:tp,pm,months:mc,parti:!!v.parti});
         if(!v.parti){md.totalYear+=tpForTotal;for(let m=0;m<12;m++)md.primesParMois[m]+=pm[m];}
@@ -1980,7 +2013,7 @@ window.renderRhBody=function(){
         let tp=0,tpReel=0;const pm=new Array(12).fill(0);
         for(let m=0;m<12;m++){const ca=v.caSaisie?.[m]??v.caSheet?.[m];if(ca==null)continue;
           const formuleMois=getFormuleMois(comp,year,m,mag);const augm=(formuleMois.augmentation!=null?formuleMois.augmentation:2);
-          const obj=v.objSheet?.[m]||v.objManuel?.[m]||calcObj(ca25,augm,m);
+          const obj=v.objManuel?.[m]??v.objSheetAuto?.[m]??calcObj(ca25,augm,m);
           const primeMagRH=calcPrime((ca/obj)*100,getPaliersMois(comp,m));const pr=primeMagRH;tp+=pr;pm[m]=pr;if(year===2026&&m>=3)tpReel+=pr;else if(year!==2026)tpReel=tp;}
         const p26=year===2026?tpReel:tp;
         md.vendeurs.push({nom:v.nom,p25:v.p25||0,p26:p26,pm,months:0,parti:!!v.parti});
@@ -2175,23 +2208,22 @@ function startAutoRefresh(){
   // Clear existing timer if any
   if(autoRefreshTimer) clearInterval(autoRefreshTimer);
 
-  // Refresh every 1 minute (60000 ms) mais ne redessine que si inactif 10s
+  // Refresh every 1 minute (60000 ms) mais ne recharger que si inactif 10s
   autoRefreshTimer = setInterval(async ()=>{
     const timeSinceActivity = Date.now() - lastActivityTime;
     const userIsEditing = timeSinceActivity < 10000; // inactif < 10s = en train d'éditer
 
-    console.log(userIsEditing ? '🔄 Mise à jour CA en arrière-plan (sans redessiner)...' : '🔄 Auto-refresh CA & vendeurs...');
-    try{
-      // Toujours charger les CA (critique)
-      await loadCAData();
+    // NE PAS recharger les CA si l'utilisateur est en train d'éditer (évite d'écraser ses changements)
+    if(userIsEditing) {
+      console.log('⏸️ Auto-refresh pausé (utilisateur en train d\'éditer)');
+      return;
+    }
 
-      // Redessiner SEULEMENT si l'utilisateur n'est pas en train d'éditer
-      if(!userIsEditing) {
-        render();
-        console.log('✅ Données actualisées et affichées');
-      } else {
-        console.log('✅ CA mis à jour (affichage en arrière-plan)');
-      }
+    console.log('🔄 Auto-refresh CA & vendeurs...');
+    try{
+      await loadCAData();
+      render();
+      console.log('✅ Données actualisées et affichées');
     }catch(e){
       console.error('❌ Erreur auto-refresh:',e);
     }
@@ -2219,16 +2251,23 @@ window.loadCAData=async function(){
   if(!S.selectedYear||!S.data)return;
   const year=S.selectedYear||2025;
   try{
-    const comp=S.data.companies[S.activeComp];
-    if(!comp)return;
-    let formule={poidsY1:comp.poidsY1??70,poidsM1:comp.poidsM1??30,augmentation:comp.augmentation??2};
-    if(comp.formules?.[year]){
-      if(Array.isArray(comp.formules[year])){formule=comp.formules[year][0]||formule;}
-      else{formule=comp.formules[year];}
+    if(!S.data)return;
+
+    // Construire les formules pour CHAQUE magasin de CHAQUE société
+    const formulesParSocieteMagasin={};
+    for(const[compName,comp]of Object.entries(S.data.companies)){
+      formulesParSocieteMagasin[compName]={};
+      for(const mag of comp.magasins){
+        // Priorité: formules du magasin, sinon de la société, sinon defaults
+        let formule={poidsY1:comp.poidsY1??70,poidsM1:comp.poidsM1??30,augmentation:comp.augmentation??2};
+        if(mag.formules?.[year]){
+          formule=mag.formules[year];
+        } else if(comp.formules?.[year]){
+          formule=comp.formules[year];
+        }
+        formulesParSocieteMagasin[compName][mag.nom]=formule;
+      }
     }
-    const poidsDynamique=formule.poidsY1??70;
-    const poidsHistorique=formule.poidsM1??30;
-    const augmentation=(formule.augmentation!=null?formule.augmentation:2);
 
     // Construire les mappings nomCA pour tous les magasins (année courante + N-1)
     const nomCAMappings={};
@@ -2239,9 +2278,13 @@ window.loadCAData=async function(){
         }
       }
     }
-    const result=await api('get_ca_and_objectives',{year,poidsDynamique,poidsHistorique,augmentation,nomCAMappings});
+    const result=await api('get_ca_and_objectives',{year,formulesParSocieteMagasin,nomCAMappings});
     if(result.magasins){
       applyCAToVendeurs(result.magasins);
+      // IMPORTANT: Reapply augmentation changes for ALL companies (applyCAToVendeurs affects all)
+      for(const[compName,comp]of Object.entries(S.data.companies)){
+        recalculateObjectivesWithNewAugmentation(compName, year);
+      }
       S.caDataLoaded=true;
     }
     render();
@@ -2357,7 +2400,6 @@ window.doSaveManager=async(comp,val)=>{optimisticUpdate(()=>{S.data.companies[co
 window.doSaveCA=async(comp,mag,vendeur,mois,val)=>{
   const c=S.data.companies[comp];const m=c?.magasins.find(x=>x.nom===mag);const v=m?.vendeurs.find(x=>x.nom===vendeur);
   optimisticUpdate(()=>{if(v){if(!v.caSaisie)v.caSaisie=new Array(12).fill(null);v.caSaisie[mois]=val===''?null:parseFloat(val);}},()=>api('save_ca',{societe:comp,magasin:mag,vendeur,mois,ca:val}),'CA sauvegardé');
-  await loadCAData();
 };
 window.doSaveTempsPartiel=async(comp,mag,vendeur,val)=>{
   const c=S.data.companies[comp];const m=c?.magasins.find(x=>x.nom===mag);const v=m?.vendeurs.find(x=>x.nom===vendeur);
@@ -2478,6 +2520,9 @@ function recalculateObjectivesWithNewAugmentation(comp, year) {
       if (!v.caSheetAuto) continue;
 
       for (let m = 0; m < 12; m++) {
+        // Skip if manual objective is set for this month
+        if (v.objManuel?.[m] != null) continue;
+
         const ca = v.caSheetAuto[m];
         const caN1 = mag.caN1[m];
         const evolutionN1 = mag.evolutionN1[m];
@@ -2521,12 +2566,15 @@ window.doSaveFormule=async(comp,year,y1,m1,aug)=>{
   recalculateObjectivesWithNewAugmentation(comp, year);
   render(); // Affiche immédiatement
 
-  // Recharge en arrière-plan
-  try{
-    await api('save_augmentation',{societe:comp,augmentation:augToSave,poidsY1:y1,poidsM1:m1});
-    await loadCAData(); // Recharge depuis le sheet pour confirmer
-    toast('✅ Formule sauvegardée pour '+year);
-  }catch(e){toast('❌ Erreur: '+e.message);}
+  // Sauvegarde en arrière-plan NON-BLOQUANTE
+  (async ()=>{
+    try{
+      await api('save_augmentation',{societe:comp,augmentation:augToSave,poidsY1:y1,poidsM1:m1});
+      // NE PAS recharger les données - changement d'augmentation ne modifie pas le sheet
+      // L'auto-refresh (toutes les 1min) mettra à jour si nécessaire
+      toast('✅ Formule sauvegardée pour '+year);
+    }catch(e){toast('❌ Erreur: '+e.message);}
+  })();
 };
 
 let formuleMoisTimeout={};
@@ -2538,10 +2586,7 @@ window.doSaveFormuleMois=async(comp,year,mois,y1,m1,aug)=>{
   if(!S.data.companies[comp].formules[year])S.data.companies[comp].formules[year]={};
   if(!Array.isArray(S.data.companies[comp].formules[year])){
     const oldFormule=S.data.companies[comp].formules[year];
-    S.data.companies[comp].formules[year]=new Array(12).fill({poidsY1:70,poidsM1:30,augmentation:2});
-    for(let i=0;i<12;i++){
-      S.data.companies[comp].formules[year][i]={...oldFormule};
-    }
+    S.data.companies[comp].formules[year]=Array.from({length:12},()=>({...oldFormule}));
   }
   S.data.companies[comp].formules[year][mois]={poidsY1:parseInt(y1)||70,poidsM1:parseInt(m1)||30,augmentation:augToSave};
 
@@ -2551,12 +2596,14 @@ window.doSaveFormuleMois=async(comp,year,mois,y1,m1,aug)=>{
 
   const key=`${comp}-${year}-${mois}`;
   clearTimeout(formuleMoisTimeout[key]);
-  formuleMoisTimeout[key]=setTimeout(async ()=>{
-    try{
-      await api('save_augmentation',{societe:comp,augmentation:augToSave,poidsY1:y1,poidsM1:m1});
-      await loadCAData();
-      toast('✅ Formule sauvegardée pour '+M[mois]);
-    }catch(e){toast('❌ Erreur: '+e.message);}
+  formuleMoisTimeout[key]=setTimeout(()=>{
+    (async ()=>{
+      try{
+        await api('save_augmentation',{societe:comp,augmentation:augToSave,poidsY1:y1,poidsM1:m1});
+        // NE PAS recharger - changement d'augmentation ne modifie pas le sheet
+        toast('✅ Formule sauvegardée pour '+M[mois]);
+      }catch(e){toast('❌ Erreur: '+e.message);}
+    })();
   },1000);
 };
 
@@ -2574,12 +2621,14 @@ window.doSaveFormuleMag=async(comp,magNom,year,mois,y1,m1,aug)=>{
   recalculateObjectivesWithNewAugmentation(comp, year);
   render(); // Affiche immédiatement
 
-  // Recharge en arrière-plan
-  try{
-    await api('save_formule_magasin',{societe:comp,magasin:magNom,year,mois,poidsY1:y1,poidsM1:m1,augmentation:augToSave});
-    await loadCAData();
-    toast('✅ Formule magasin sauvegardée');
-  }catch(e){toast('❌ Erreur: '+e.message);}
+  // Sauvegarde en arrière-plan NON-BLOQUANTE
+  (async ()=>{
+    try{
+      await api('save_formule_magasin',{societe:comp,magasin:magNom,year,mois,poidsY1:y1,poidsM1:m1,augmentation:augToSave});
+      // NE PAS recharger - changement d'augmentation ne modifie pas le sheet
+      toast('✅ Formule magasin sauvegardée');
+    }catch(e){toast('❌ Erreur: '+e.message);}
+  })();
 };
 
 window.doResetFormuleMag=async(comp,magNom,year,mois)=>{
@@ -2595,7 +2644,7 @@ function getStoreTotalVolantPrimeMois(cn,comp,mag,ca25,mois,year){
   const storeCa=firstV.caSheetAuto?.[mois]??firstV.caSaisie?.[mois];
   if(!storeCa||storeCa<=0)return 0;
   const formuleMois=getFormuleMois(comp,year,mois,mag);const augm=(formuleMois.augmentation!=null?formuleMois.augmentation:2);
-  const storeObj=firstV.objSheetAuto?.[mois]??firstV.objManuel?.[mois]??calcObj(ca25,augm,mois);
+  const storeObj=firstV.objManuel?.[mois]??firstV.objSheetAuto?.[mois]??calcObj(ca25,augm,mois);
   const primeMag=calcPrime((storeCa/storeObj)*100,getPaliersMois(comp,mois));
   if(primeMag<=0)return 0;
   let total=0;
@@ -2619,7 +2668,7 @@ function getAlternantTotalPrimeMois(cn,comp,alt,mois,year){
   const storeCa=firstV.caSheetAuto?.[mois]??firstV.caSaisie?.[mois];
   if(!storeCa||storeCa<=0)return 0;
   const formuleMois=getFormuleMois(comp,year,mois,mag);const augm=(formuleMois.augmentation!=null?formuleMois.augmentation:2);
-  const storeObj=firstV.objSheetAuto?.[mois]??firstV.objManuel?.[mois]??calcObj(magCa25,augm,mois);
+  const storeObj=firstV.objManuel?.[mois]??firstV.objSheetAuto?.[mois]??calcObj(magCa25,augm,mois);
   const primeMag=calcPrime((storeCa/storeObj)*100,getPaliersMois(comp,mois));
   if(primeMag<=0)return 0;
   // Prorate par jours d'entreprise (environ 20 jours par mois)
@@ -2642,7 +2691,7 @@ function getVolantTotalPrimeMois(cn,comp,vl,mois,year){
     const storeCa=firstV.caSheetAuto?.[mois]??firstV.caSaisie?.[mois];
     if(!storeCa||storeCa<=0)continue;
     const formuleMois=getFormuleMois(comp,year,mois,mag);const augm=(formuleMois.augmentation!=null?formuleMois.augmentation:2);
-    const storeObj=firstV.objSheetAuto?.[mois]??firstV.objManuel?.[mois]??calcObj(magCa25,augm,mois);
+    const storeObj=firstV.objManuel?.[mois]??firstV.objSheetAuto?.[mois]??calcObj(magCa25,augm,mois);
     const primeMag=calcPrime((storeCa/storeObj)*100,getPaliersMois(comp,mois));
     if(primeMag<=0)continue;
     total+=parseFloat(((vj.jours/diviseur)*primeMag).toFixed(2));
@@ -2665,7 +2714,7 @@ function getAlternantTotalPrimeMois(cn,comp,alt,mois,year){
     const storeCa=firstV.caSheetAuto?.[mois]??firstV.caSaisie?.[mois];
     if(!storeCa||storeCa<=0)continue;
     const formuleMois=getFormuleMois(comp,year,mois,mag);const augm=(formuleMois.augmentation!=null?formuleMois.augmentation:2);
-    const storeObj=firstV.objSheetAuto?.[mois]??firstV.objManuel?.[mois]??calcObj(magCa25,augm,mois);
+    const storeObj=firstV.objManuel?.[mois]??firstV.objSheetAuto?.[mois]??calcObj(magCa25,augm,mois);
     const primeMag=calcPrime((storeCa/storeObj)*100,getPaliersMois(comp,mois));
     if(primeMag<=0)continue;
     total+=parseFloat(((aj.jours/diviseur)*primeMag).toFixed(2));
@@ -2956,7 +3005,7 @@ window.doExport=()=>{
     for(const mag of comp.magasins){const ca25=mag.totalCA2025||100000;const mgr=mag.manager||comp.manager||'';
       for(const v of mag.vendeurs){const row=[v.nom,mag.nom,'FIXE',mgr,v.parti?'PARTI':'Actif',v.p25||0];let tp=0;
         for(let m=0;m<12;m++){const formuleMois=getFormuleMois(comp,year,m,mag);const augm=(formuleMois.augmentation!=null?formuleMois.augmentation:2);
-          const obj=v.objSheet?.[m]||v.objManuel?.[m]||calcObj(ca25,augm,m);const ca=v.caSaisie?.[m]??v.caSheet?.[m];
+          const obj=v.objManuel?.[m]??v.objSheetAuto?.[m]??calcObj(ca25,augm,m);const ca=v.caSaisie?.[m]??v.caSheet?.[m];
           const t=ca!=null?(ca/obj)*100:null;const p=calcPrime(t,getPaliersMois(comp,m))*(v.tempsPartiel??100)/100;tp+=p;
           row.push(obj,ca,t!=null?Math.round(t*10)/10+'%':'',p||'');}row.push(tp);rows.push(row);}}
     if((comp.volants||[]).length){rows.push([]);rows.push(['— VOLANTS —']);
