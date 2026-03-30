@@ -2165,10 +2165,12 @@ function showCopyMoisModal(comp,moisSource){
     <h3>Copier les paliers de ${M[moisSource]}</h3><div class="modal-sub">${comp}</div>
     <div style="margin-top:12px;padding:10px;background:#f0f9ff;border-radius:6px;border:1px solid #bae6fd">
       <div style="font-size:11px;font-weight:700;color:#0369a1;margin-bottom:8px">Copier vers :</div>
-      ${M.map((m,i)=>`<label style="font-size:11px;display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:6px;width:100%">
-        <input type="checkbox" id="copyMoisTarget${i}" style="cursor:pointer;flex-shrink:0" ${i===moisSource?'disabled':''}/>
-        <span ${i===moisSource?'style="color:var(--tx3)"':''}>${m}${i===moisSource?' (source)':''}</span>
+      <div style="display:flex;flex-direction:column;gap:6px">
+      ${M.map((m,i)=>`<label style="font-size:11px;display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="copyMoisTarget${i}" style="cursor:pointer;flex-shrink:0;width:16px;height:16px" ${i===moisSource?'disabled':''}/>
+        <span${i===moisSource?' style="color:var(--tx3)"':''} >${m}${i===moisSource?' (source)':''}</span>
       </label>`).join('')}
+      </div>
     </div>
     <div class="modal-btns">
       <button class="btn" style="background:#f1f5f9;color:var(--tx2)" onclick="S.modal=null;render()">Annuler</button>
@@ -2593,7 +2595,7 @@ function recalculateObjectivesWithNewAugmentation(comp, year) {
         const augmentation = formule.augmentation ?? 2;  // ← L'augmentation correcte pour ce magasin!
 
         // Recalculer l'objectif avec l'augmentation du magasin
-        const caM1 = v.caSheetAuto[m - 1] || ca;
+        const caM1 = m === 0 ? mag.caN1[11] : v.caSheetAuto[m - 1];
         const evolution = evolutionN1 / 100; // convertir du % en ratio
         const objective = (py1 / 100) * (caM1 * evolution) + (pm1 / 100) * caN1;
         const objectiveWithAug = objective * (1 + (augmentation / 100));
