@@ -298,6 +298,7 @@ const filterNormalMagasins = (magasins) => {
   const year=S.selectedYear||2025;
   return magasins.filter(m => {
     if(isSystemMagasin(m.nom))return false;
+    if(m.nom.includes('/'))return false;
     if(!m.dateFermeture)return true;
     const [yearFerm,monthFerm,dayFerm]=(m.dateFermeture.split('-')||[]).map(Number);
     if(!yearFerm||!monthFerm)return true;
@@ -960,11 +961,13 @@ function renderStats(comp, type='fixes'){
 
   const totV=comp.magasins.reduce((s,m)=>s+m.vendeurs.filter(v=>!v.parti&&!(v.type==='volant'||/volant|divers/i.test(m.nom))).length,0);
   const totVol=(comp.volants||[]).filter(v=>isActiveInMonth(v.dateParti,S.selectedYear,S.mois)).length;
-  
+  const totAlt=(comp.alternants||[]).filter(v=>isActiveInMonth(v.dateParti,S.selectedYear,S.mois)).length;
+
   let h=`<div class="stats">
     <div class="st st-dark"><small>Coût</small><b>${fmtE(total)}</b></div>
-    <div class="st" style="background:#eff6ff"><small style="color:#1d4ed8">Fixes actifs</small><b style="color:var(--blu)">${type==='volants'?0:totV}</b></div>
-    <div class="st" style="background:#f5f3ff"><small style="color:var(--vol)">Volants actifs</small><b style="color:var(--vol)">${type==='volants'?totVol:0}</b></div>
+    <div class="st" style="background:#eff6ff"><small style="color:#1d4ed8">Vendeurs Fixes</small><b style="color:var(--blu)">${type==='volants'||type==='alternants'?0:totV}</b></div>
+    <div class="st" style="background:#f5f3ff"><small style="color:var(--vol)">Vendeurs Volants</small><b style="color:var(--vol)">${type==='volants'?totVol:0}</b></div>
+    <div class="st" style="background:#f0fdf4"><small style="color:#166534">Alternants</small><b style="color:#16a34a">${type==='alternants'?totAlt:0}</b></div>
     <div class="st" style="background:#fef2f2"><small style="color:#991b1b">Hors palier</small><b style="color:var(--red)">${sous}</b></div>`;
   paliersRef.forEach((p,i)=>{const op=p.operateur||'>=';const opS=OPS.find(o=>o.val===op)?.short||'≥';
     const colorClass=tc(p.seuil);
@@ -1135,7 +1138,7 @@ function renderVolSection(comp){
         </div>`;});
       h+=`</div></div>`;}
     else{
-      // Vue "Tous" : tableau primes par mois pour chaque volant
+      // Vue "Tous" : tableau primes par mois pour chaque volant (SEULEMENT les volants)
       const cn=S.activeComp;const year=S.selectedYear||2025;
       const actVols2=(comp.volants||[]).filter(v=>isActiveInMonth(v.dateParti,S.selectedYear,S.mois));
       if(actVols2.length){
@@ -1155,26 +1158,8 @@ function renderVolSection(comp){
           </tr>`;
         });
         h+=`</tbody></table></div>`;
-      }
-      // Tableau alternants
-      const actAlts=(comp.alternants||[]).filter(a=>isActiveInMonth(a.dateParti,S.selectedYear,S.mois));
-      if(actAlts.length){
-        h+=`<div style="overflow-x:auto;margin-top:12px"><table style="width:100%;border-collapse:collapse;font-size:12px">
-          <thead><tr style="background:#f0fdf4">
-            <th style="padding:6px 10px;text-align:left;color:#166534;font-weight:700">Alternant</th>
-            ${MS.map(m=>`<th style="padding:6px 8px;text-align:right;color:var(--tx2);font-weight:600">${m}</th>`).join('')}
-            <th style="padding:6px 10px;text-align:right;color:#166534;font-weight:700">Total</th>
-          </tr></thead><tbody>`;
-        actAlts.forEach(a=>{
-          const pm=new Array(12).fill(0).map((_,m)=>getAlternantTotalPrimeMois(cn,comp,a,m,year));
-          const tot=pm.reduce((s,p)=>s+p,0);
-          h+=`<tr style="border-top:1px solid #dcfce7">
-            <td style="padding:6px 10px;font-weight:600;color:#166534">${a.nom}</td>
-            ${pm.map(p=>`<td style="padding:6px 8px;text-align:right;color:${p>0?'var(--grn)':'var(--tx3)'};font-weight:${p>0?'700':'400'}">${p>0?fmtPrime(p):'—'}</td>`).join('')}
-            <td style="padding:6px 10px;text-align:right;font-weight:800;color:${tot>0?'#166534':'var(--tx3)'}">${tot>0?fmtPrime(tot):'—'}</td>
-          </tr>`;
-        });
-        h+=`</tbody></table></div>`;
+      }else{
+        h+=`<div style="font-size:12px;color:var(--tx3);text-align:center;padding:20px">Aucun volant pour cette société.</div>`;
       }
       h+=`<div style="font-size:11px;color:var(--tx3);margin-top:8px">👆 Sélectionnez un mois pour gérer les affectations par magasin.</div>`;
     }}
@@ -1350,7 +1335,30 @@ function renderAlternantSection(comp){
         h+=`</div></div>`;
       }
     }else{
-      h+=`<div style="font-size:11px;color:var(--tx3);margin-top:12px">👆 Sélectionnez un mois pour gérer les jours d'école/entreprise.</div>`;
+      // Vue "Tous" : tableau primes par mois pour chaque alternant (SEULEMENT les alternants)
+      const cn=S.activeComp;const year=S.selectedYear||2025;
+      const actAlts2=(comp.alternants||[]).filter(a=>isActiveInMonth(a.dateParti,S.selectedYear,S.mois));
+      if(actAlts2.length){
+        h+=`<div style="overflow-x:auto;margin-top:8px"><table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="background:#f0fdf4">
+            <th style="padding:6px 10px;text-align:left;color:#166534;font-weight:700">Alternant</th>
+            ${MS.map(m=>`<th style="padding:6px 8px;text-align:right;color:var(--tx2);font-weight:600">${m}</th>`).join('')}
+            <th style="padding:6px 10px;text-align:right;color:#166534;font-weight:700">Total</th>
+          </tr></thead><tbody>`;
+        actAlts2.forEach(a=>{
+          const pm=new Array(12).fill(0).map((_,m)=>getAlternantTotalPrimeMois(cn,comp,a,m,year));
+          const tot=pm.reduce((s,p)=>s+p,0);
+          h+=`<tr style="border-top:1px solid #dcfce7">
+            <td style="padding:6px 10px;font-weight:600;color:#166534">${a.nom}</td>
+            ${pm.map(p=>`<td style="padding:6px 8px;text-align:right;color:${p>0?'var(--grn)':'var(--tx3)'};font-weight:${p>0?'700':'400'}">${p>0?fmtPrime(p):'—'}</td>`).join('')}
+            <td style="padding:6px 10px;text-align:right;font-weight:800;color:${tot>0?'#166534':'var(--tx3)'}">${tot>0?fmtPrime(tot):'—'}</td>
+          </tr>`;
+        });
+        h+=`</tbody></table></div>`;
+      }else{
+        h+=`<div style="font-size:12px;color:var(--tx3);text-align:center;padding:20px">Aucun alternant pour cette société.</div>`;
+      }
+      h+=`<div style="font-size:11px;color:var(--tx3);margin-top:8px">👆 Sélectionnez un mois pour gérer les jours d'école/entreprise.</div>`;
     }
   }
   return h+'</div>';}
@@ -1558,7 +1566,7 @@ function renderMagasinPanel(){
     mags.forEach(m=>{h+=`<div class="mag-card">
       <div class="mag-card-name">🏬 ${m.nom}</div>
       <div class="mag-card-stats">
-        <span class="mag-card-stat">CA : ${fmtE(m.ca25)}</span>
+        <span class="mag-card-stat">CA cumul : ${fmtE(m.ca25)}</span>
         <span class="mag-card-stat">${m.nV} vendeur(s)</span>
         ${m.nP?`<span class="mag-card-stat" style="color:var(--red)">${m.nP} parti(s)</span>`:''}
       </div>
@@ -1777,7 +1785,7 @@ function renderRecapAnnuel(socData,year,selectedSoc='all'){
         <div>
           <div style="font-size:9px;text-transform:uppercase;letter-spacing:2px;opacity:.4;margin-bottom:2px">Société</div>
           <div style="font-weight:800;font-size:16px">${cn}</div>
-          <div style="font-size:10px;opacity:.5;margin-top:2px">👤 ${sd.manager||'—'} · ${filterNormalMagasins(sd.magasins).length} magasin(s) · ${sd.nVend} actif(s)${sd.nParti?' · <span style="color:#fca5a5">'+sd.nParti+' parti(s)</span>':''} · ${sd.nVolants} volant(s) · ${sd.nAlternants||0} alternant(s)</div>
+          <div style="font-size:10px;opacity:.5;margin-top:2px">👤 ${sd.manager||'—'} · ${filterNormalMagasins(sd.magasins).length} magasin(s) · ${sd.nVend} vendeurs fixes${sd.nParti?' · <span style="color:#fca5a5">'+sd.nParti+' parti(s)</span>':''} · ${sd.nVolants} volant(s) · ${sd.nAlternants||0} alternant(s)</div>
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <div style="background:#ffffff12;border-radius:10px;padding:8px 14px;text-align:center">
