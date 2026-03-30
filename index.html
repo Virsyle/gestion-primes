@@ -2680,14 +2680,9 @@ window.doSaveFormuleMag=async(comp,magNom,year,mois,y1,m1,aug)=>{
   recalculateObjectivesWithNewAugmentation(comp, year);
   render(); // Affiche immédiatement
 
-  // Sauvegarde en arrière-plan NON-BLOQUANTE
-  (async ()=>{
-    try{
-      await api('save_formule_magasin',{societe:comp,magasin:magNom,year,mois,poidsY1:y1,poidsM1:m1,augmentation:augToSave});
-      // NE PAS recharger - changement d'augmentation ne modifie pas le sheet
-      toast('✅ Formule magasin sauvegardée');
-    }catch(e){toast('❌ Erreur: '+e.message);}
-  })();
+  // Formules de magasin sont stockées en mémoire (recalcul local des objectifs)
+  // Pas encore de persistance serveur pour les formules par magasin
+  toast('✅ Formule magasin appliquée (mémoire)');
 };
 
 window.doResetFormuleMag=async(comp,magNom,year,mois)=>{
