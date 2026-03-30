@@ -272,6 +272,20 @@ function getVendeurName(v,mois,year){
 }
 
 function tc(t){if(t==null)return'';if(t>=110)return'g';if(t>=100)return'b';if(t>=95)return'o';return'r';}
+function tcMois(t,paliers){
+  if(t==null)return'';
+  if(!paliers||paliers.length===0)return tc(t);
+  const s=[...paliers].sort((a,b)=>b.seuil-a.seuil);
+  for(let i=0;i<s.length;i++){
+    const x=s[i];const op=x.operateur||'>=';let ok=false;
+    if(op==='>=')ok=t>=x.seuil;else if(op==='<=')ok=t<=x.seuil;else if(op==='>')ok=t>x.seuil;else ok=t<x.seuil;
+    if(ok){
+      const colors=['g','b','o','r'];
+      return colors[Math.min(i,3)];
+    }
+  }
+  return'r';
+}
 function esc(s){return(s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');}
 function ini(n){return(n||'').split(' ').map(w=>w[0]||'').join('').substring(0,2).toUpperCase()||'?';}
 
@@ -319,7 +333,7 @@ function isActiveInMonth(dateParti, selectedYear, moisStr) {
 }
 
 
-let S={phase:'login',password:'',data:null,activeComp:'',mois:'all',view:'gestion',loading:false,modal:null,volantJours:[],volantCA:[],volantAbsences:[],alternantJours:[],
+let S={phase:'login',password:'',data:null,activeComp:'',mois:'all',view:'gestion',loading:false,modal:null,volantJours:[],volantCA:[],volantAbsences:[],alternantJours:[],alternantAbsences:[],
   fixSearch:'',fixFilter:'all',volSearch:'',volFilter:'all',subTab:'fixes',
   recapMode:'annuel',recapMois:0,rhSocTab:'all',globalSearch:'',recapSearch:'',
   selectedYear:2025,availableYears:[],caDataLoaded:false,caCache:{},gestionTab:'fixes'};
@@ -1003,13 +1017,13 @@ function renderMag(mag,mi,comp){
       months.forEach(m=>{
         const formuleMois=getFormuleMois(comp,year,m,mag);const augm=(formuleMois.augmentation!=null?formuleMois.augmentation:2);
         const obj=v.objManuel?.[m]??v.objSheetAuto?.[m]??calcObj(ca25,augm,m);const ca=v.caSheetAuto?.[m]??v.caSaisie?.[m];
-        const taux=ca!=null?(ca/obj)*100:null;const primeMagM=calcPrime(taux,getPaliersMois(comp,m))*(v.tempsPartiel??100)/100;const prime=primeMagM;const c=tc(taux);
+        const taux=ca!=null?(ca/obj)*100:null;const primeMagM=calcPrime(taux,getPaliersMois(comp,m))*(v.tempsPartiel??100)/100;const prime=primeMagM;const c=tcMois(taux,getPaliersMois(comp,m));
         const w=S.mois!=='all'?' wide':'';
-        const primeColor=c?'tx-'+c:(prime>0?'var(--grn)':'var(--tx3)');
+        const primeColor=prime<=0?'tx-r':(c?'tx-'+c:'var(--grn)');
         h+=`<div class="mc${w}">
           <div class="mc-lbl">${MS[m]}</div>
           <div class="mc-obj">Obj: ${fmt(obj)} <span style="font-size:8px;cursor:pointer;color:var(--acc)" onclick="showObjModal('${ac}','${esc(mag.nom)}','${esc(v.nom)}',${m},${obj})">✏️</span></div>
-          <input type="number" placeholder="Cumul CA" value="${ca!=null?ca:''}" onchange="doSaveCA('${ac}','${esc(mag.nom)}','${esc(v.nom)}',${m},this.value)"/>
+          <input type="number" placeholder="CA réalisé" value="${ca!=null?ca:''}" onchange="doSaveCA('${ac}','${esc(mag.nom)}','${esc(v.nom)}',${m},this.value)"/>
           ${taux!=null?`<div class="mc-res"><span class="tx-${c}">${taux.toFixed(1)}%</span><span class="${primeColor}">${fmtPrime(prime)}</span></div>`:''}
         </div>`;});
       if(S.mois!=='all'){const mi2=parseInt(S.mois);
@@ -1091,14 +1105,14 @@ function renderVolSection(comp){
         const fmoisV=getFormuleMois(comp,year,mIdx);const augmV=(fmoisV.augmentation!=null?fmoisV.augmentation:2);
         const storeObj=firstV?(firstV.objManuel?.[mIdx]??firstV.objSheetAuto?.[mIdx]??calcObj(magCa25,augmV,mIdx)):calcObj(magCa25,augmV,mIdx);
         const storeTaux=storeCa!=null?(storeCa/storeObj)*100:null;
-        const cMag=tc(storeTaux);
+        const cMag=tcMois(storeTaux,getPaliersMois(comp,mIdx));
         h+=`<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;color:var(--tx2);margin-bottom:6px">📍 ${mag.nom}</div><div class="mgrid">`;
         actVols.forEach(v=>{
           const vj=(S.volantJours||[]).find(x=>x.societe===cn&&x.volant===v.nom&&x.magasin===mag.nom&&x.mois===mIdx);
           const joursVol=vj?vj.jours:null;
           const prime=primVolMag(v.nom,mag);
           const participation=joursVol!=null?(joursVol/(diviseurParVolant[v.nom]||1))*100:null;
-          const primeColorVol=cMag?'tx-'+cMag:(prime>0?'var(--grn)':'var(--tx3)');
+          const primeColorVol=prime<=0?'var(--tx3)':(cMag?'tx-'+cMag:'var(--grn)');
           h+=`<div class="mc wide ${cMag?'bg-'+cMag:''}">
             <div class="mc-lbl" style="color:var(--vol)">${v.nom.split(' ')[0]}</div>
             <input type="number" placeholder="Jours" value="${joursVol!=null?joursVol:''}" onchange="doSaveVolantJours('${ac}','${esc(v.nom)}','${esc(mag.nom)}',${mIdx},this.value)"/>
@@ -1256,12 +1270,30 @@ function renderAlternantSection(comp){
           </div>`;});
         h+=`</div></div>`;
 
+        // Ligne absences par alternant
+        h+=`<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;margin-bottom:12px">
+          <div style="font-size:11px;font-weight:700;color:#c2410c;margin-bottom:8px">🚫 Absences — ${M[mIdx]}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">`;
+        altsM.forEach(a=>{
+          const absEntry=(S.alternantAbsences||[]).find(x=>x.societe===cn&&x.alternant===a.nom&&x.mois===mIdx);
+          const joursAbs=absEntry?.jours||null;
+          h+=`<div style="background:#fff;border:1px solid #fde68a;border-radius:6px;padding:6px 10px;min-width:120px">
+            <div style="font-size:10px;color:#c2410c;font-weight:700;margin-bottom:4px">${a.nom.split(' ')[0]}</div>
+            <div style="display:flex;align-items:center;gap:4px">
+              <input type="number" min="0" placeholder="0" style="width:44px;padding:3px 4px;border:1px solid #fde68a;border-radius:4px;font-size:12px;font-weight:700;text-align:center" value="${joursAbs!=null?joursAbs:''}" onchange="doSaveAlternantAbsences('${ac}','${esc(a.nom)}',${mIdx},this.value)"/>
+              <span style="font-size:11px;color:#c2410c">j</span>
+            </div>
+          </div>`;});
+        h+=`</div></div>`;
+
         // Affectations par magasin pour les alternants
         const diviseurParAlt={};
         altsM.forEach(a=>{
           const totalJoursMags=(S.alternantJours||[]).filter(x=>x.societe===cn&&x.alternant===a.nom&&x.mois===mIdx&&x.jours>0).reduce((s,x)=>s+x.jours,0);
           const ecoleJours=a.joursEcole?.[mIdx]??0;
-          diviseurParAlt[a.nom]=totalJoursMags+ecoleJours;
+          const absEntry=(S.alternantAbsences||[]).find(x=>x.societe===cn&&x.alternant===a.nom&&x.mois===mIdx);
+          const joursAbs=absEntry?.jours||0;
+          diviseurParAlt[a.nom]=totalJoursMags+ecoleJours+joursAbs;
         });
         const primAltMag=(altNom,mag)=>{
           const magCa25=mag.totalCA2025||100000;
@@ -1286,14 +1318,14 @@ function renderAlternantSection(comp){
           const fmoisA=getFormuleMois(comp,year,mIdx);const augmA=(fmoisA.augmentation!=null?fmoisA.augmentation:2);
           const storeObj=firstV?(firstV.objManuel?.[mIdx]??firstV.objSheetAuto?.[mIdx]??calcObj(magCa25,augmA,mIdx)):calcObj(magCa25,augmA,mIdx);
           const storeTaux=storeCa!=null?(storeCa/storeObj)*100:null;
-          const cMag=tc(storeTaux);
+          const cMag=tcMois(storeTaux,getPaliersMois(comp,mIdx));
           h+=`<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;color:var(--tx2);margin-bottom:6px">📍 ${mag.nom}</div><div class="mgrid">`;
           altsM.forEach(a=>{
             const aj=(S.alternantJours||[]).find(x=>x.societe===cn&&x.alternant===a.nom&&x.magasin===mag.nom&&x.mois===mIdx);
             const joursAlt=aj?aj.jours:null;
             const prime=primAltMag(a.nom,mag);
             const participation=joursAlt!=null?(joursAlt/(diviseurParAlt[a.nom]||1))*100:null;
-            const primeColorAlt=cMag?'tx-'+cMag:(prime>0?'var(--grn)':'var(--tx3)');
+            const primeColorAlt=prime<=0?'var(--tx3)':(cMag?'tx-'+cMag:'var(--grn)');
             h+=`<div class="mc wide ${cMag?'bg-'+cMag:''}">
               <div class="mc-lbl" style="color:#16a34a">${a.nom.split(' ')[0]}</div>
               <input type="number" placeholder="Jours" value="${joursAlt!=null?joursAlt:''}" onchange="doSaveAlternantJoursMagasin('${ac}','${esc(a.nom)}','${esc(mag.nom)}',${mIdx},this.value)"/>
@@ -2139,13 +2171,18 @@ function showAddVolantModal(comp){
       <button class="btn" style="background:var(--vol);color:#fff" onclick="doAddVolant('${comp}')">Ajouter</button>
     </div></div></div>`;render();}
 
-function showObjModal(comp,mag,vendeur,mois,currentObj){
+function showObjModal(comp,mag,vendeur,mois,currentObj,hasManual){
+  const mag2=S.data.companies[comp]?.magasins.find(m=>m.nom===mag);if(!mag2)return;
+  const v2=mag2.vendeurs.find(v=>v.nom===vendeur);if(!v2)return;
+  const manualVal=v2.objManuel?.[mois];
+  const hasM=manualVal!=null;
   S.modal=`<div class="modal-bg" onclick="if(event.target===this){S.modal=null;render()}"><div class="modal">
-    <h3>Objectif manuel — ${MS[mois]}</h3><div class="modal-sub">${vendeur} · ${mag}</div>
-    <label>Objectif calculé automatiquement : ${fmtE(currentObj)}</label>
-    <input type="number" placeholder="Laisser vide = auto" id="newObj"/>
+    <h3>Objectif — ${MS[mois]}</h3><div class="modal-sub">${vendeur} · ${mag}</div>
+    <label>${hasM?'MANUAL':'Calculé automatiquement'} : ${fmtE(hasM?manualVal:currentObj)}</label>
+    <input type="number" placeholder="Laisser vide = auto" id="newObj" value="${hasM?manualVal:''}"/>
     <div class="modal-btns">
       <button class="btn" style="background:#f1f5f9;color:var(--tx2)" onclick="S.modal=null;render()">Annuler</button>
+      ${hasM?`<button class="btn" style="background:#ef4444;color:#fff" onclick="doDeleteObjManuel('${comp}','${mag}','${vendeur}',${mois})">🗑️ Supprimer</button>`:''}
       <button class="btn" style="background:var(--tx);color:#fff" onclick="doSaveObjManuel('${comp}','${mag}','${vendeur}',${mois})">Valider</button>
     </div></div></div>`;render();}
 
@@ -2185,7 +2222,7 @@ window.doLogin=async function(){
   try{const r=await api('check_password');
     if(r.success){sessionStorage.setItem('primes_password',S.password);S.phase='main';render();
       const data=await api('get_all_data');
-      S.data=data;S.volantJours=data.volantJours||[];S.volantCA=data.volantCA||[];S.volantAbsences=data.volantAbsences||[];S.alternantJours=data.alternantJours||[];S.activeComp=Object.keys(data.companies)[0]||'';
+      S.data=data;S.volantJours=data.volantJours||[];S.volantCA=data.volantCA||[];S.volantAbsences=data.volantAbsences||[];S.alternantJours=data.alternantJours||[];S.alternantAbsences=data.alternantAbsences||[];S.activeComp=Object.keys(data.companies)[0]||'';
       // Charger les années disponibles et les CA
       await loadAvailableYears();
       await loadCAData();
@@ -2410,6 +2447,12 @@ window.doSaveObjManuel=async(comp,mag,vendeur,mois)=>{
   const c=S.data.companies[comp];const m=c?.magasins.find(x=>x.nom===mag);const v=m?.vendeurs.find(x=>x.nom===vendeur);
   S.modal=null;
   optimisticUpdate(()=>{if(v){if(!v.objManuel)v.objManuel=new Array(12).fill(null);v.objManuel[mois]=val===''?null:parseFloat(val);}},()=>api('save_objectif_manuel',{societe:comp,magasin:mag,vendeur,mois,objectif:val}),'Objectif sauvegardé');
+};
+
+window.doDeleteObjManuel=async(comp,mag,vendeur,mois)=>{
+  const c=S.data.companies[comp];const m=c?.magasins.find(x=>x.nom===mag);const v=m?.vendeurs.find(x=>x.nom===vendeur);
+  S.modal=null;
+  optimisticUpdate(()=>{if(v){if(!v.objManuel)v.objManuel=new Array(12).fill(null);v.objManuel[mois]=null;}},()=>api('save_objectif_manuel',{societe:comp,magasin:mag,vendeur,mois,objectif:''}),'Objectif manuel supprimé');
 };
 
 window.doSavePalier=async(comp)=>{
@@ -2746,6 +2789,14 @@ window.doSaveVolantAbsences=async(comp,volant,mois,jours)=>{
   },()=>api('save_volant_absences',{societe:comp,volant,mois,jours:j}),'Absences volant sauvegardées');
 };
 
+window.doSaveAlternantAbsences=async(comp,alternant,mois,jours)=>{
+  const j=parseInt(jours)||0;
+  optimisticUpdate(()=>{
+    S.alternantAbsences=(S.alternantAbsences||[]).filter(x=>!(x.societe===comp&&x.alternant===alternant&&x.mois===mois));
+    if(j>0)S.alternantAbsences.push({societe:comp,alternant,mois,jours:j});
+  },()=>api('save_alternant_absences',{societe:comp,alternant,mois,jours:j}),'Absences alternant sauvegardées');
+};
+
 window.doAddVendeur=async(comp,mag)=>{
   const nom=document.getElementById('newVendNom')?.value?.trim();if(!nom){toast('Entrez un nom');return;}
   const c=S.data.companies[comp];const m=c?.magasins.find(x=>x.nom===mag);
@@ -3022,7 +3073,7 @@ async function autoLogin(){
   try{const r=await api('check_password');
     if(r.success){sessionStorage.setItem('primes_password',S.password);S.phase='main';render();
       const data=await api('get_all_data');
-      S.data=data;S.volantJours=data.volantJours||[];S.volantCA=data.volantCA||[];S.volantAbsences=data.volantAbsences||[];S.alternantJours=data.alternantJours||[];S.activeComp=Object.keys(data.companies)[0]||'';
+      S.data=data;S.volantJours=data.volantJours||[];S.volantCA=data.volantCA||[];S.volantAbsences=data.volantAbsences||[];S.alternantJours=data.alternantJours||[];S.alternantAbsences=data.alternantAbsences||[];S.activeComp=Object.keys(data.companies)[0]||'';
       await loadAvailableYears();
       await loadCAData();
       startAutoRefresh();
