@@ -1023,14 +1023,16 @@ function renderMag(mag,mi,comp){
       months.forEach(m=>{
         const formuleMois=getFormuleMois(comp,year,m,mag);const augm=(formuleMois.augmentation!=null?formuleMois.augmentation:2);
         const obj=v.objManuel?.[m]??v.objSheetAuto?.[m]??calcObj(ca25,augm,m);const ca=v.caSheetAuto?.[m]??v.caSaisie?.[m];
-        const taux=ca!=null?(ca/obj)*100:null;const primeMagM=calcPrime(taux,getPaliersMois(comp,m))*(v.tempsPartielMois?.[m]??100)/100;const prime=primeMagM;const c=tcMois(taux,getPaliersMois(comp,m));
+        const tp=v.tempsPartielMois?.[m]??100;
+        const taux=ca!=null?(ca/obj)*100:null;const primeMagM=calcPrime(taux,getPaliersMois(comp,m))*tp/100;const prime=primeMagM;const c=tcMois(taux,getPaliersMois(comp,m));
         const w=S.mois!=='all'?' wide':'';
         const primeColor=prime<=0?'tx-r':(c?'tx-'+c:'var(--grn)');
-        h+=`<div class="mc${w}${c ? ' bg-' + c : ''}">
+        const bgClass=tp<100?'':(c ? ' bg-' + c : '');
+        h+=`<div class="mc${w}${bgClass}">
           <div class="mc-lbl">${MS[m]}</div>
           <div class="mc-obj">Obj: ${fmt(obj)} <span style="font-size:8px;cursor:pointer;color:var(--acc)" onclick="showObjModal('${ac}','${esc(mag.nom)}','${esc(v.nom)}',${m},${obj})">✏️</span></div>
           <input type="number" placeholder="CA réalisé" value="${ca!=null?ca:''}" onchange="doSaveCA('${ac}','${esc(mag.nom)}','${esc(v.nom)}',${m},this.value)"/>
-          <input type="number" min="0" max="100" placeholder="TP %" style="width:50px;font-size:10px" value="${v.tempsPartielMois?.[m]??100}" onchange="doSaveTempsPartiel('${ac}','${esc(mag.nom)}','${esc(v.nom)}',${m},this.value)" title="Temps partiel (%)"/>
+          <div style="display:flex;align-items:center;gap:3px;margin-top:2px"><label style="font-size:9px;color:var(--tx3);white-space:nowrap">TP%</label><input type="number" min="0" max="100" style="width:40px;padding:3px 4px;border:1px solid var(--brd);border-radius:5px;font-size:10px;font-weight:600" value="${v.tempsPartielMois?.[m]??100}" onchange="doSaveTempsPartiel('${ac}','${esc(mag.nom)}','${esc(v.nom)}',${m},this.value)" title="Temps partiel (%)"/></div>
           ${taux!=null?`<div class="mc-res"><span class="tx-${c}">${taux.toFixed(1)}%</span><span class="${primeColor}">${fmtPrime(prime)}</span></div>`:''}
         </div>`;});
       if(S.mois!=='all'){const mi2=parseInt(S.mois);
@@ -2163,8 +2165,8 @@ function showCopyMoisModal(comp,moisSource){
     <h3>Copier les paliers de ${M[moisSource]}</h3><div class="modal-sub">${comp}</div>
     <div style="margin-top:12px;padding:10px;background:#f0f9ff;border-radius:6px;border:1px solid #bae6fd">
       <div style="font-size:11px;font-weight:700;color:#0369a1;margin-bottom:8px">Copier vers :</div>
-      ${M.map((m,i)=>`<label style="font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer;margin-bottom:4px">
-        <input type="checkbox" id="copyMoisTarget${i}" style="cursor:pointer" ${i===moisSource?'disabled':''}/>
+      ${M.map((m,i)=>`<label style="font-size:11px;display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:6px;width:100%">
+        <input type="checkbox" id="copyMoisTarget${i}" style="cursor:pointer;flex-shrink:0" ${i===moisSource?'disabled':''}/>
         <span ${i===moisSource?'style="color:var(--tx3)"':''}>${m}${i===moisSource?' (source)':''}</span>
       </label>`).join('')}
     </div>
