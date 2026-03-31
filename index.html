@@ -2604,11 +2604,10 @@ function recalculateObjectivesWithNewAugmentation(comp, year) {
         // Skip if manual objective is set for this month
         if (v.objManuel?.[m] != null) continue;
 
-        const ca = v.caSheetAuto[m];
         const caN1 = mag.caN1[m];
         const evolutionN1 = mag.evolutionN1[m];
 
-        if (!ca || caN1 == null || evolutionN1 == null) continue;
+        if (caN1 == null || evolutionN1 == null) continue;
 
         // Récupérer la formule CORRECTE pour ce magasin/mois (inclut l'augmentation du magasin)
         const formule = getFormuleMois(compData, year, m, mag);
@@ -2618,6 +2617,7 @@ function recalculateObjectivesWithNewAugmentation(comp, year) {
 
         // Recalculer l'objectif avec l'augmentation du magasin
         const caM1 = m === 0 ? mag.caN1[11] : v.caSheetAuto[m - 1];
+        if (caM1 == null) continue;
         const evolution = evolutionN1 / 100; // convertir du % en ratio
         const objective = (py1 / 100) * (caM1 * evolution) + (pm1 / 100) * caN1;
         const objectiveWithAug = objective * (1 + (augmentation / 100));
@@ -2671,6 +2671,13 @@ window.doSaveFormuleMois=async(comp,year,mois,y1,m1,aug)=>{
   }
   S.data.companies[comp].formules[year][mois]={poidsY1:parseInt(y1)||70,poidsM1:parseInt(m1)||30,augmentation:augToSave};
 
+  // Vider objSheetAuto pour ce mois → force recalcul ou fallback calcObj avec le nouvel augmentation
+  for(const mag of S.data.companies[comp].magasins){
+    for(const v of mag.vendeurs){
+      if(v.objManuel?.[mois]==null && v.objSheetAuto){v.objSheetAuto[mois]=null;}
+    }
+  }
+
   // Recalcul immédiat des objectifs (nanoseconde)
   recalculateObjectivesWithNewAugmentation(comp, year);
   render(); // Affiche immédiatement
@@ -2696,6 +2703,11 @@ window.doSaveFormuleMag=async(comp,magNom,year,mois,y1,m1,aug)=>{
   if(!mag.formules)mag.formules={};
   if(!mag.formules[year])mag.formules[year]=new Array(12).fill(null);
   mag.formules[year][mois]={poidsY1:parseInt(y1)||70,poidsM1:parseInt(m1)||30,augmentation:augToSave};
+
+  // Vider objSheetAuto pour ce mois sur ce magasin
+  for(const v of mag.vendeurs){
+    if(v.objManuel?.[mois]==null && v.objSheetAuto){v.objSheetAuto[mois]=null;}
+  }
 
   // Recalcul immédiat des objectifs (nanoseconde)
   recalculateObjectivesWithNewAugmentation(comp, year);
