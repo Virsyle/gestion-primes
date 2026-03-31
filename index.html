@@ -466,6 +466,10 @@ window.renderGlobalResults=function(){
       const fields=[v.nom,cn,mgr].join(' ').toLowerCase();
       if(fields.includes(q.toLowerCase()))results.push({type:'volant',nom:v.nom,societe:cn,manager:mgr,parti:!!v.parti,archive:!!v.dateParti});
     }
+    for(const a of (comp.alternants||[])){
+      const fields=[a.nom,cn,mgr].join(' ').toLowerCase();
+      if(fields.includes(q.toLowerCase()))results.push({type:'alternant',nom:a.nom,societe:cn,manager:mgr,parti:!!a.parti,archive:!!a.dateParti});
+    }
     if([cn,mgr].join(' ').toLowerCase().includes(q.toLowerCase())){
       results.push({type:'societe',nom:cn,manager:mgr,nMag:filterNormalMagasins(comp.magasins).length});
     }
@@ -478,7 +482,7 @@ window.renderGlobalResults=function(){
   const seen=new Set();const uniq=results.filter(r=>{const k=r.type+r.nom+r.societe;if(seen.has(k))return false;seen.add(k);return true;});
   const n=uniq.length;
   const hl=s=>{if(!q)return s;try{return s.replace(new RegExp(q.replace(/[-[\/{}()*+?.,\\^$|#\s]/g,'\\$&'),'gi'),m=>`<mark class="gsearch-hit">${m}</mark>`);}catch(e){return s;}};
-  
+
   let res='';
   if(n===0){res=`<span style="color:var(--tx3);font-size:12px">Aucun résultat pour « ${q} »</span>`;}
   else{
@@ -488,6 +492,9 @@ window.renderGlobalResults=function(){
       </div>`;
       if(r.type==='volant')return`<div class="gsearch-result" onclick="navToVolant('${esc(r.societe)}')">
         <span class="badge-vol">VOLANT</span> ${hl(r.nom)} <span style="color:var(--tx3);font-size:11px">· ${hl(r.societe)}${r.manager?' · 👤 '+hl(r.manager):''}${r.parti?' · <span class=\'badge-parti\'>PARTI</span>':''}</span>
+      </div>`;
+      if(r.type==='alternant')return`<div class="gsearch-result" onclick="navToSociete('${esc(r.societe)}')">
+        <span class="badge-alt">ALTERNANT</span> ${hl(r.nom)} <span style="color:var(--tx3);font-size:11px">· ${hl(r.societe)}${r.manager?' · 👤 '+hl(r.manager):''}${r.parti?' · <span class=\'badge-parti\'>PARTI</span>':''}</span>
       </div>`;
       if(r.type==='societe')return`<div class="gsearch-result" onclick="navToSociete('${esc(r.nom)}')">
         <span style="font-size:11px;background:#f1f5f9;padding:1px 7px;border-radius:20px;font-weight:700">SOCIÉTÉ</span> ${hl(r.nom)} <span style="color:var(--tx3);font-size:11px">· 👤 ${hl(r.manager||'—')} · ${r.nMag} magasin(s)</span>
@@ -499,7 +506,7 @@ window.renderGlobalResults=function(){
     }).join('');
     if(n>12)res+=`<div style="font-size:11px;color:var(--tx3);padding:6px 0">... et ${n-12} autres résultats. Précisez votre recherche.</div>`;
   }
-  
+
   // Update ONLY the results div and the counter
   const resultsDiv=document.getElementById('gsearch-results');
   const hitsSpan=document.querySelector('.gsearch-hits');
