@@ -2268,7 +2268,6 @@ window.doLogin=async function(){
       S.data=data;S.volantJours=data.volantJours||[];S.volantCA=data.volantCA||[];S.volantAbsences=data.volantAbsences||[];S.alternantJours=data.alternantJours||[];S.alternantAbsences=data.alternantAbsences||[];S.activeComp=Object.keys(data.companies)[0]||'';
       // Charger les années disponibles et les CA
       await loadAvailableYears();
-      remapSaisieToYear(S.selectedYear);
       await loadCAData();
       // Démarrer l'auto-refresh toutes les 5 minutes
       startAutoRefresh();
@@ -2389,6 +2388,8 @@ function clearAutoCAData(){
       for(const v of mag.vendeurs||[]){
         v.caSheetAuto={};
         v.objSheetAuto={};
+        v.caSaisie=new Array(12).fill(null);
+        v.objManuel=new Array(12).fill(null);
       }
     }
   }
@@ -2481,32 +2482,10 @@ function applyCAToVendeurs(caDataMagasins){
     }
   }
 }
-// ═══ Remapper caSaisie/objManuel sur l'année courante ═══
-function remapSaisieToYear(year){
-  if(!S.data?.companies)return;
-  for(const comp of Object.values(S.data.companies)){
-    for(const mag of comp.magasins||[]){
-      for(const v of mag.vendeurs||[]){
-        v.caSaisie=v.caSaisieByYear?.[year]||new Array(12).fill(null);
-        v.objManuel=v.objManuelByYear?.[year]||new Array(12).fill(null);
-      }
-    }
-    for(const vl of comp.volants||[]){
-      vl.caSaisie=vl.caSaisieByYear?.[year]||new Array(12).fill(null);
-      vl.objManuel=vl.objManuelByYear?.[year]||new Array(12).fill(null);
-    }
-    for(const alt of comp.alternants||[]){
-      alt.caSaisie=alt.caSaisieByYear?.[year]||new Array(12).fill(null);
-      alt.objManuel=alt.objManuelByYear?.[year]||new Array(12).fill(null);
-    }
-  }
-}
-
 // ═══ NOUVEAU : Changer d'année ═══
 window.changeYear=async function(year){
   S.selectedYear=parseInt(year);
   S.caDataLoaded=false;
-  remapSaisieToYear(S.selectedYear);
   render();
   await loadCAData();
   render();
@@ -2516,7 +2495,6 @@ window.changeYear=async function(year){
 window.doLogout=()=>{sessionStorage.removeItem('primes_password');S.phase='login';S.data=null;S.password='';render();};
 window.doRefresh=async()=>{toast('Actualisation...');
   try{const d=await api('get_all_data');S.data=d;S.volantJours=d.volantJours||[];if(d.volantCA)S.volantCA=d.volantCA;
-    remapSaisieToYear(S.selectedYear);
     await loadCAData();
     render();toast('Actualisé');}
   catch(e){toast('Erreur: '+e.message);}};
@@ -2525,8 +2503,7 @@ window.doSaveManager=async(comp,val)=>{optimisticUpdate(()=>{S.data.companies[co
 
 window.doSaveCA=async(comp,mag,vendeur,mois,val)=>{
   const c=S.data.companies[comp];const m=c?.magasins.find(x=>x.nom===mag);const v=m?.vendeurs.find(x=>x.nom===vendeur);
-  const yr=S.selectedYear||2025;
-  optimisticUpdate(()=>{if(v){if(!v.caSaisieByYear)v.caSaisieByYear={};if(!v.caSaisieByYear[yr])v.caSaisieByYear[yr]=new Array(12).fill(null);v.caSaisieByYear[yr][mois]=val===''?null:parseFloat(val);v.caSaisie=v.caSaisieByYear[yr];}},()=>api('save_ca',{societe:comp,magasin:mag,vendeur,mois,ca:val,annee:yr}),'CA sauvegardé');
+  optimisticUpdate(()=>{if(v){if(!v.caSaisie)v.caSaisie=new Array(12).fill(null);v.caSaisie[mois]=val===''?null:parseFloat(val);}},()=>api('save_ca',{societe:comp,magasin:mag,vendeur,mois,ca:val}),'CA sauvegardé');
 };
 window.doSaveTempsPartiel=async(comp,mag,vendeur,mois,val)=>{
   const c=S.data.companies[comp];const m=c?.magasins.find(x=>x.nom===mag);const v=m?.vendeurs.find(x=>x.nom===vendeur);
@@ -2535,16 +2512,14 @@ window.doSaveTempsPartiel=async(comp,mag,vendeur,mois,val)=>{
 window.doSaveObjManuel=async(comp,mag,vendeur,mois)=>{
   const val=document.getElementById('newObj')?.value||'';
   const c=S.data.companies[comp];const m=c?.magasins.find(x=>x.nom===mag);const v=m?.vendeurs.find(x=>x.nom===vendeur);
-  const yr=S.selectedYear||2025;
   S.modal=null;
-  optimisticUpdate(()=>{if(v){if(!v.objManuelByYear)v.objManuelByYear={};if(!v.objManuelByYear[yr])v.objManuelByYear[yr]=new Array(12).fill(null);v.objManuelByYear[yr][mois]=val===''?null:parseFloat(val);v.objManuel=v.objManuelByYear[yr];}},()=>api('save_objectif_manuel',{societe:comp,magasin:mag,vendeur,mois,objectif:val,annee:yr}),'Objectif sauvegardé');
+  optimisticUpdate(()=>{if(v){if(!v.objManuel)v.objManuel=new Array(12).fill(null);v.objManuel[mois]=val===''?null:parseFloat(val);}},()=>api('save_objectif_manuel',{societe:comp,magasin:mag,vendeur,mois,objectif:val}),'Objectif sauvegardé');
 };
 
 window.doDeleteObjManuel=async(comp,mag,vendeur,mois)=>{
   const c=S.data.companies[comp];const m=c?.magasins.find(x=>x.nom===mag);const v=m?.vendeurs.find(x=>x.nom===vendeur);
-  const yr=S.selectedYear||2025;
   S.modal=null;
-  optimisticUpdate(()=>{if(v){if(!v.objManuelByYear)v.objManuelByYear={};if(!v.objManuelByYear[yr])v.objManuelByYear[yr]=new Array(12).fill(null);v.objManuelByYear[yr][mois]=null;v.objManuel=v.objManuelByYear[yr];}},()=>api('save_objectif_manuel',{societe:comp,magasin:mag,vendeur,mois,objectif:'',annee:yr}),'Objectif manuel supprimé');
+  optimisticUpdate(()=>{if(v){if(!v.objManuel)v.objManuel=new Array(12).fill(null);v.objManuel[mois]=null;}},()=>api('save_objectif_manuel',{societe:comp,magasin:mag,vendeur,mois,objectif:''}),'Objectif manuel supprimé');
 };
 
 window.doSavePalier=async(comp)=>{
