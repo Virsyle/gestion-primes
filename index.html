@@ -346,8 +346,113 @@ function isActiveInMonth(dateParti, selectedYear, moisStr) {
   return moisActuel + 1 < moisParti; // visible jusqu'AU mois de départ (exclu)
 }
 
+function getCurrentCalendarContext(){
+  const now=new Date();
+  return{year:now.getFullYear(),month:now.getMonth()};
+}
 
-let S={phase:'login',password:'',data:null,activeComp:'',mois:'all',view:'gestion',loading:false,modal:null,volantJours:[],volantCA:[],volantAbsences:[],alternantJours:[],alternantAbsences:[],
+function isResultMonthAllowed(year,mois){
+  const targetYear=Number(year);
+  const targetMonth=Number(mois);
+  const current=getCurrentCalendarContext();
+  if(targetYear<current.year)return true;
+  if(targetYear>current.year)return false;
+  return targetMonth<=current.month;
+}
+
+function getResultMonths(year,selectedMois=null){
+  if(selectedMois!==null&&selectedMois!==undefined){
+    return isResultMonthAllowed(year,selectedMois)?[selectedMois]:[];
+  }
+  return [...Array(12).keys()].filter(m=>isResultMonthAllowed(year,m));
+}
+
+function resetYearScopedState(){
+  if(!S.data?.companies)return;
+  S.volantJours=[];S.volantAbsences=[];S.alternantJours=[];S.alternantEcole=[];S.alternantAbsences=[];
+  for(const comp of Object.values(S.data.companies)){
+    for(const mag of comp.magasins||[]){
+      mag.evolutionN1=null;
+      mag.caN1=null;
+      mag.totalCA2025=0;
+      for(const v of mag.vendeurs||[]){
+        v.caSheetAuto=new Array(12).fill(null);
+        v.objSheetAuto=new Array(12).fill(null);
+        v.caSaisie=new Array(12).fill(null);
+        v.objManuel=new Array(12).fill(null);
+      }
+    }
+    for(const alt of comp.alternants||[]){
+      alt.joursEcole={};
+      alt.joursEntreprise={};
+    }
+  }
+}
+
+function applyYearInputData(payload){
+  if(!S.data?.companies)return;
+  S.volantJours=(payload.volantJours||[]).map(x=>({...x}));
+  S.volantAbsences=(payload.volantAbsences||[]).map(x=>({...x}));
+  S.alternantJours=(payload.alternantJours||[]).map(x=>({...x}));
+  S.alternantEcole=(payload.alternantEcole||[]).map(x=>({...x}));
+  S.alternantAbsences=(payload.alternantAbsences||[]).map(x=>({...x}));
+
+  const vendeurIndex={};
+  const alternantIndex={};
+  for(const[cn,comp]of Object.entries(S.data.companies)){
+    alternantIndex[cn]={};
+    for(const mag of comp.magasins||[]){
+      for(const v of mag.vendeurs||[]){
+        vendeurIndex[`${cn}|||${mag.nom}|||${v.nom}`]=v;
+      }
+    }
+    for(const alt of comp.alternants||[]){
+      alt.joursEcole={};
+      alt.joursEntreprise={};
+      alternantIndex[cn][alt.nom]=alt;
+    }
+  }
+
+  for(const row of(payload.caManuels||[])){
+    const v=vendeurIndex[`${row.societe}|||${row.magasin}|||${row.vendeur}`];
+    if(!v)continue;
+    v.caSaisie[row.mois]=row.ca;
+  }
+  for(const row of(payload.objectifsManuels||[])){
+    const v=vendeurIndex[`${row.societe}|||${row.magasin}|||${row.vendeur}`];
+    if(!v)continue;
+    v.objManuel[row.mois]=row.objectif;
+  }
+  for(const row of(payload.alternantEcole||[])){
+    const alt=alternantIndex[row.societe]?.[row.alternant];
+    if(!alt)continue;
+    alt.joursEcole[row.mois]=row.jours;
+  }
+  for(const row of(payload.alternantJours||[])){
+    const alt=alternantIndex[row.societe]?.[row.alternant];
+    if(!alt)continue;
+    alt.joursEntreprise[row.mois]=(alt.joursEntreprise[row.mois]||0)+(row.jours||0);
+  }
+}
+
+async function loadYearInputData(opts={}){
+  if(!S.selectedYear||!S.data)return;
+  const result=await api('get_year_input_data',{annee:S.selectedYear});
+  applyYearInputData(result);
+  if(opts.renderAfter!==false)render();
+}
+
+async function reloadSelectedYearData(opts={}){
+  resetYearScopedState();
+  await Promise.all([
+    loadCAData({renderAfter:false}),
+    loadYearInputData({renderAfter:false})
+  ]);
+  if(opts.renderAfter!==false)render();
+}
+
+
+let S={phase:'login',password:'',data:null,activeComp:'',mois:'all',view:'gestion',loading:false,modal:null,volantJours:[],volantCA:[],volantAbsences:[],alternantJours:[],alternantEcole:[],alternantAbsences:[],
   fixSearch:'',fixFilter:'all',volSearch:'',volFilter:'all',subTab:'fixes',
   recapMode:'annuel',recapMois:0,rhSocTab:'all',globalSearch:'',recapSearch:'',
   selectedYear:2025,availableYears:[],caDataLoaded:false,caCache:{},gestionTab:'fixes'};
@@ -633,7 +738,7 @@ function renderLogin(app){
 function renderTotals2025Banner(){
   const comps=S.data.companies;
   const year=S.selectedYear||2025;
-  const formule=year===2025?{poidsY1:70,poidsM1:30,augmentation:2}:{poidsY1:70,poidsM1:30,augmentation:2};
+  const resultMonths=getResultMonths(year);
   let totalGeneral=0;let totalSimule2026=0;let totalReel2026=0;
   let cards='';
 
@@ -647,7 +752,7 @@ function renderTotals2025Banner(){
       for(const v of mag.vendeurs){
         if(v.parti)continue;
         let tp=0;let tpSimule=0;let tpReel=0;
-        for(let m=0;m<12;m++){
+        for(const m of resultMonths){
           const ca=v.caSaisie?.[m]??v.caSheetAuto?.[m];
           if(ca==null)continue;
           const formuleMois=getFormuleMois(comp,year,m,mag);
@@ -668,7 +773,7 @@ function renderTotals2025Banner(){
     for(const vl of (comp.volants||[])){
       if(vl.parti)continue;
       let p=0;let pSimule=0;let pReel=0;
-      for(let m=0;m<12;m++){
+      for(const m of resultMonths){
         const pm=getVolantTotalPrimeMois(cn,comp,vl,m,year);
         p+=pm;
         if(year===2026){if(m<3)pSimule+=pm;else pReel+=pm;}
@@ -681,7 +786,7 @@ function renderTotals2025Banner(){
     for(const alt of (comp.alternants||[])){
       if(alt.parti)continue;
       let p=0;let pSimule=0;let pReel=0;
-      for(let m=0;m<12;m++){
+      for(const m of resultMonths){
         const pm=getAlternantTotalPrimeMois(cn,comp,alt,m,year);
         p+=pm;
         if(year===2026){if(m<3)pSimule+=pm;else pReel+=pm;}
@@ -887,7 +992,7 @@ function renderStats(comp, type='fixes'){
   let total=0,sous=0,count=0,sansCA=0;
   const year=S.selectedYear||2025;
   const selectedMois = S.mois === 'all' ? null : parseInt(S.mois);
-  const moisToCheck = selectedMois !== null ? [selectedMois] : [...Array(12).keys()];
+  const moisToCheck = getResultMonths(year, selectedMois);
   const paliersRef = getPaliersMois(comp, moisToCheck[0]);
   const pc={};paliersRef.forEach((_,i)=>pc[i]=0);
 
@@ -1489,13 +1594,14 @@ function renderVendeursPage(){
 function collectFixed(){
   const all=[];
   const year=S.selectedYear||2025;
+  const resultMonths=getResultMonths(year);
   for(const[cn,comp]of Object.entries(S.data.companies)){
     for(const mag of comp.magasins){const ca25=mag.totalCA2025||100000;
       const nActifs=mag.vendeurs.filter(v=>isActiveInMonth(v.dateParti,S.selectedYear,S.mois)).length||1;
       for(const v of mag.vendeurs){
         if(!isActiveInMonth(v.dateParti,S.selectedYear,S.mois))continue;
         let tp=0;
-        for(let m=0;m<12;m++){const ca=v.caSaisie?.[m]??v.caSheet?.[m];if(ca==null)continue;
+        for(const m of resultMonths){const ca=v.caSaisie?.[m]??v.caSheetAuto?.[m];if(ca==null)continue;
           const formuleMois=getFormuleMois(comp,year,m,mag);const augm=(formuleMois.augmentation!=null?formuleMois.augmentation:2);
           const obj=v.objManuel?.[m]??v.objSheetAuto?.[m]??calcObj(ca25,augm,m);const primeMagC=calcPrime((ca/obj)*100,getPaliersMois(comp,m))*(v.tempsPartielMois?.[m]??100)/100;tp+=primeMagC;}
         all.push({nom:v.nom,societe:cn,magasin:mag.nom,manager:mag.manager||comp.manager||'',parti:!!v.parti,p26:tp,p25:v.p25||0});}}}
@@ -1687,6 +1793,7 @@ function renderArchivesListPanel(){
 function renderRecap(){
   // ── Calcul global avec données mensuelles ──
   const year=S.selectedYear||2025;
+  const resultMonths=getResultMonths(year);
   const socData={};let gYear=0;
   const grandMois=new Array(12).fill(0);
   
@@ -1704,10 +1811,10 @@ function renderRecap(){
       for(const v of mag.vendeurs){
         if(!isActiveInMonth(v.dateParti,S.selectedYear,S.mois))continue;
         let tp=0,tpReel=0,mc=0;const pm=new Array(12).fill(0);
-        for(let m=0;m<12;m++){
+        for(const m of resultMonths){
           const formuleMois=getFormuleMois(comp,year,m,mag);
           const augm=(formuleMois.augmentation!=null?formuleMois.augmentation:2);
-          const ca=v.caSaisie?.[m]??v.caSheetAuto?.[m]??v.caSheet?.[m];
+          const ca=v.caSaisie?.[m]??v.caSheetAuto?.[m];
           const obj=v.objManuel?.[m]??v.objSheetAuto?.[m]??calcObj(ca25,augm,m);
           if(ca!=null){mc++;const primeMagR=calcPrime((ca/obj)*100,getPaliersMois(comp,m))*(v.tempsPartielMois?.[m]??100)/100;const pr=primeMagR;tp+=pr;pm[m]=pr;if(year===2026&&m>=3)tpReel+=pr;else if(year!==2026)tpReel=tp;}}
 
@@ -1715,7 +1822,7 @@ function renderRecap(){
 
         // Calculer primes année précédente
         let tpPrev=0;
-        if(year>2026){for(let m=0;m<12;m++){const formuleMois=getFormuleMois(comp,year-1,m,mag);const augm=(formuleMois.augmentation!=null?formuleMois.augmentation:2);const ca=v.caSaisie?.[m]??v.caSheetAuto?.[m]??v.caSheet?.[m];const obj=v.objManuel?.[m]??v.objSheetAuto?.[m]??calcObj(ca25,augm,m);if(ca!=null){const primeMagR=calcPrime((ca/obj)*100,getPaliersMois(comp,year-1,m))*(v.tempsPartielMois?.[m]??100)/100;tpPrev+=primeMagR;}}} else {tpPrev=v.p25||0;}
+        if(year>2026){for(let m=0;m<12;m++){const formuleMois=getFormuleMois(comp,year-1,m,mag);const augm=(formuleMois.augmentation!=null?formuleMois.augmentation:2);const ca=v.caSaisie?.[m]??v.caSheetAuto?.[m];const obj=v.objManuel?.[m]??v.objSheetAuto?.[m]??calcObj(ca25,augm,m);if(ca!=null){const primeMagR=calcPrime((ca/obj)*100,getPaliersMois(comp,year-1,m))*(v.tempsPartielMois?.[m]??100)/100;tpPrev+=primeMagR;}}} else {tpPrev=v.p25||0;}
 
         md.vendeurs.push({nom:v.nom,pPrev:tpPrev,pCurr:year===2026?tpReel:tp,pm,months:mc,parti:!!v.parti});
         if(!v.parti){md.totalYear+=tpForTotal;for(let m=0;m<12;m++)md.primesParMois[m]+=pm[m];}
@@ -1729,7 +1836,7 @@ function renderRecap(){
     for(const vl of (comp.volants||[])){
       if(!isActiveInMonth(vl.dateParti,S.selectedYear,S.mois))continue;
       if(!vl.parti){
-        let p=0;let pReel=0;for(let m=0;m<12;m++){const pm=getVolantTotalPrimeMois(cn,comp,vl,m,year);p+=pm;if(year===2026&&m>=3)pReel+=pm;else if(year!==2026)pReel=p;}
+        let p=0;let pReel=0;for(const m of resultMonths){const pm=getVolantTotalPrimeMois(cn,comp,vl,m,year);p+=pm;if(year===2026&&m>=3)pReel+=pm;else if(year!==2026)pReel=p;}
         const pForTotal=year===2026?pReel:p;
         sd.totalYear+=pForTotal;sd.total26+=pForTotal;
         gYear+=pForTotal;
@@ -1739,7 +1846,7 @@ function renderRecap(){
     for(const alt of (comp.alternants||[])){
       if(!isActiveInMonth(alt.dateParti,S.selectedYear,S.mois))continue;
       if(!alt.parti){
-        let p=0;let pReel=0;for(let m=0;m<12;m++){const pm=getAlternantTotalPrimeMois(cn,comp,alt,m,year);p+=pm;if(year===2026&&m>=3)pReel+=pm;else if(year!==2026)pReel=p;}
+        let p=0;let pReel=0;for(const m of resultMonths){const pm=getAlternantTotalPrimeMois(cn,comp,alt,m,year);p+=pm;if(year===2026&&m>=3)pReel+=pm;else if(year!==2026)pReel=p;}
         const pForTotal=year===2026?pReel:p;
         sd.totalYear+=pForTotal;sd.total26+=pForTotal;
         gYear+=pForTotal;
@@ -1861,8 +1968,8 @@ function renderRecapAnnuel(socData,year,selectedSoc='all'){
         volantsActifs.forEach(vl=>{
           let pPrev=vl.p25||0;
           let pCurr=0;const pmCurr=new Array(12).fill(0);
-          for(let m=0;m<12;m++){pmCurr[m]=getVolantTotalPrimeMois(cn,comp,vl,m,year);pCurr+=pmCurr[m];}
-          if(year>2025){pPrev=0;for(let m=0;m<12;m++){pPrev+=getVolantTotalPrimeMois(cn,comp,vl,m,year-1);}}
+          for(const m of getResultMonths(year)){pmCurr[m]=getVolantTotalPrimeMois(cn,comp,vl,m,year);pCurr+=pmCurr[m];}
+          if(year>2025){pPrev=0;for(const m of getResultMonths(year-1)){pPrev+=getVolantTotalPrimeMois(cn,comp,vl,m,year-1);}}
           const moisSaisis=pmCurr.filter(p=>p>0).length;
           const d=pCurr-pPrev;
           const cl=d>0?'var(--red)':d<0?'var(--grn)':'var(--tx3)';
@@ -1896,8 +2003,8 @@ function renderRecapAnnuel(socData,year,selectedSoc='all'){
         alternantsActifs.forEach(alt=>{
           let pPrev=alt.p25||0;
           let pCurr=0;const pmCurr=new Array(12).fill(0);
-          for(let m=0;m<12;m++){pmCurr[m]=getAlternantTotalPrimeMois(cn,comp,alt,m,year);pCurr+=pmCurr[m];}
-          if(year>2025){pPrev=0;for(let m=0;m<12;m++){pPrev+=getAlternantTotalPrimeMois(cn,comp,alt,m,year-1);}}
+          for(const m of getResultMonths(year)){pmCurr[m]=getAlternantTotalPrimeMois(cn,comp,alt,m,year);pCurr+=pmCurr[m];}
+          if(year>2025){pPrev=0;for(const m of getResultMonths(year-1)){pPrev+=getAlternantTotalPrimeMois(cn,comp,alt,m,year-1);}}
           const moisSaisis=pmCurr.filter(p=>p>0).length;
           const d=pCurr-pPrev;
           const cl=d>0?'var(--red)':d<0?'var(--grn)':'var(--tx3)';
@@ -2073,6 +2180,8 @@ function buildRhBody(socData,year,moisSel,toShow,srch){
 window.renderRhBody=function(){
   const body=document.getElementById('rh-body');if(!body){render();return;}
   // Recompute socData quickly
+  const year=S.selectedYear||2025;
+  const resultMonths=getResultMonths(year);
   const socData={};const grandMois=new Array(12).fill(0);
   for(const[cn,comp]of Object.entries(S.data.companies)){
     const sd={name:cn,manager:comp.manager||'',magasins:[],total25:0,total26:0,primesParMois:new Array(12).fill(0),nVend:0,nParti:0};
@@ -2082,7 +2191,7 @@ window.renderRhBody=function(){
       const md={nom:mag.nom,manager:mag.manager||comp.manager||'',ca25,vendeurs:[],total25:0,total26:0,primesParMois:new Array(12).fill(0)};
       for(const v of mag.vendeurs){
         let tp=0,tpReel=0;const pm=new Array(12).fill(0);
-        for(let m=0;m<12;m++){const ca=v.caSaisie?.[m]??v.caSheet?.[m];if(ca==null)continue;
+        for(const m of resultMonths){const ca=v.caSaisie?.[m]??v.caSheetAuto?.[m];if(ca==null)continue;
           const formuleMois=getFormuleMois(comp,year,m,mag);const augm=(formuleMois.augmentation!=null?formuleMois.augmentation:2);
           const obj=v.objManuel?.[m]??v.objSheetAuto?.[m]??calcObj(ca25,augm,m);
           const primeMagRH=calcPrime((ca/obj)*100,getPaliersMois(comp,m));const pr=primeMagRH;tp+=pr;pm[m]=pr;if(year===2026&&m>=3)tpReel+=pr;else if(year!==2026)tpReel=tp;}
@@ -2096,7 +2205,7 @@ window.renderRhBody=function(){
     for(const vl of (comp.volants||[])){
       sd.total25+=(vl.p25||0);
       if(!vl.parti){
-        let p26=0,p26Reel=0;for(let m=0;m<12;m++){const pm=getVolantTotalPrimeMois(cn,comp,vl,m,year);p26+=pm;if(year===2026&&m>=3)p26Reel+=pm;else if(year!==2026)p26Reel=p26;}
+        let p26=0,p26Reel=0;for(const m of resultMonths){const pm=getVolantTotalPrimeMois(cn,comp,vl,m,year);p26+=pm;if(year===2026&&m>=3)p26Reel+=pm;else if(year!==2026)p26Reel=p26;}
         sd.total26+=(year===2026?p26Reel:p26);
       }
     }
@@ -2104,7 +2213,7 @@ window.renderRhBody=function(){
     for(const alt of (comp.alternants||[])){
       sd.total25+=(alt.p25||0);
       if(!alt.parti){
-        let p26=0,p26Reel=0;for(let m=0;m<12;m++){const pm=getAlternantTotalPrimeMois(cn,comp,alt,m,year);p26+=pm;if(year===2026&&m>=3)p26Reel+=pm;else if(year!==2026)p26Reel=p26;}
+        let p26=0,p26Reel=0;for(const m of resultMonths){const pm=getAlternantTotalPrimeMois(cn,comp,alt,m,year);p26+=pm;if(year===2026&&m>=3)p26Reel+=pm;else if(year!==2026)p26Reel=p26;}
         sd.total26+=(year===2026?p26Reel:p26);
       }
     }
@@ -2264,10 +2373,10 @@ window.doLogin=async function(){
   try{const r=await api('check_password');
     if(r.success){sessionStorage.setItem('primes_password',S.password);S.phase='main';render();
       const data=await api('get_all_data');
-      S.data=data;S.volantJours=data.volantJours||[];S.volantCA=data.volantCA||[];S.volantAbsences=data.volantAbsences||[];S.alternantJours=data.alternantJours||[];S.alternantAbsences=data.alternantAbsences||[];S.activeComp=Object.keys(data.companies)[0]||'';
+      S.data=data;S.volantCA=[];S.activeComp=Object.keys(data.companies)[0]||'';
       // Charger les années disponibles et les CA
       await loadAvailableYears();
-      await loadCAData();
+      await reloadSelectedYearData({renderAfter:false});
       // Démarrer l'auto-refresh toutes les 5 minutes
       startAutoRefresh();
       S.loading=false;render();}
@@ -2295,7 +2404,7 @@ function startAutoRefresh(){
     if(timeSinceActivity < 10000) return; // utilisateur actif, ne pas interrompre
     isRefreshing = true;
     try{
-      await loadCAData();
+      await reloadSelectedYearData({renderAfter:false});
       render();
     }catch(e){
       console.error('❌ Erreur auto-refresh:',e);
@@ -2322,7 +2431,7 @@ window.loadAvailableYears=async function(){
 };
 
 // ═══ NOUVEAU : Chargement des CA et objectifs ═══
-window.loadCAData=async function(){
+window.loadCAData=async function(opts={}){
   if(!S.selectedYear||!S.data)return;
   const year=S.selectedYear||2025;
   try{
@@ -2362,7 +2471,7 @@ window.loadCAData=async function(){
       }
       S.caDataLoaded=true;
     }
-    render();
+    if(opts.renderAfter!==false)render();
   }catch(e){console.error('Erreur chargement CA:',e);}
 };
 
@@ -2375,6 +2484,7 @@ function applyCAToVendeurs(caDataMagasins){
     .replace(/\s+/g, ' ').trim();
 
   const year=S.selectedYear||2025;
+  const allowedMonths=new Set(getResultMonths(year));
   for(const[compName,comp]of Object.entries(S.data.companies)){
     for(const mag of comp.magasins){
       // Utiliser nomCA[year] pour année courante ET nomCA[year-1] pour chercher N-1
@@ -2440,13 +2550,18 @@ function applyCAToVendeurs(caDataMagasins){
         mag.evolutionN1 = caMag.evolution || null;
         mag.caN1        = caMag.caN1      || null;
         // Calculer le CA total annuel
-        mag.totalCA2025 = caMag.ca.reduce((sum, ca) => sum + (ca || 0), 0);
+        mag.totalCA2025 = caMag.ca.reduce((sum, ca, idx) => sum + (allowedMonths.has(idx) ? (ca || 0) : 0), 0);
         for(const v of mag.vendeurs){
           if(!v.caSheetAuto)v.caSheetAuto={};
           if(!v.objSheetAuto)v.objSheetAuto={};
           for(let m=0;m<12;m++){
-            v.caSheetAuto[m]=caMag.ca[m]||null;
-            if(caMag.objectifs)v.objSheetAuto[m]=caMag.objectifs[m]||null;
+            if(allowedMonths.has(m)){
+              v.caSheetAuto[m]=caMag.ca[m]||null;
+              if(caMag.objectifs)v.objSheetAuto[m]=caMag.objectifs[m]||null;
+            }else{
+              v.caSheetAuto[m]=null;
+              if(caMag.objectifs)v.objSheetAuto[m]=null;
+            }
           }
         }
       }
@@ -2458,15 +2573,14 @@ window.changeYear=async function(year){
   S.selectedYear=parseInt(year);
   S.caDataLoaded=false;
   render();
-  await loadCAData();
-  render();
+  await reloadSelectedYearData();
 };
 
 
 window.doLogout=()=>{sessionStorage.removeItem('primes_password');S.phase='login';S.data=null;S.password='';render();};
 window.doRefresh=async()=>{toast('Actualisation...');
-  try{const d=await api('get_all_data');S.data=d;S.volantJours=d.volantJours||[];if(d.volantCA)S.volantCA=d.volantCA;
-    await loadCAData();
+  try{const d=await api('get_all_data');S.data=d;S.volantCA=d.volantCA||[];
+    await reloadSelectedYearData({renderAfter:false});
     render();toast('Actualisé');}
   catch(e){toast('Erreur: '+e.message);}};
 
@@ -2474,7 +2588,8 @@ window.doSaveManager=async(comp,val)=>{optimisticUpdate(()=>{S.data.companies[co
 
 window.doSaveCA=async(comp,mag,vendeur,mois,val)=>{
   const c=S.data.companies[comp];const m=c?.magasins.find(x=>x.nom===mag);const v=m?.vendeurs.find(x=>x.nom===vendeur);
-  optimisticUpdate(()=>{if(v){if(!v.caSaisie)v.caSaisie=new Array(12).fill(null);v.caSaisie[mois]=val===''?null:parseFloat(val);}},()=>api('save_ca',{societe:comp,magasin:mag,vendeur,mois,ca:val}),'CA sauvegardé');
+  const annee=S.selectedYear||2025;
+  optimisticUpdate(()=>{if(v){if(!v.caSaisie)v.caSaisie=new Array(12).fill(null);v.caSaisie[mois]=val===''?null:parseFloat(val);}},()=>api('save_ca',{societe:comp,magasin:mag,vendeur,annee,mois,ca:val}),'CA sauvegardé');
 };
 window.doSaveTempsPartiel=async(comp,mag,vendeur,mois,val)=>{
   const c=S.data.companies[comp];const m=c?.magasins.find(x=>x.nom===mag);const v=m?.vendeurs.find(x=>x.nom===vendeur);
@@ -2483,14 +2598,16 @@ window.doSaveTempsPartiel=async(comp,mag,vendeur,mois,val)=>{
 window.doSaveObjManuel=async(comp,mag,vendeur,mois)=>{
   const val=document.getElementById('newObj')?.value||'';
   const c=S.data.companies[comp];const m=c?.magasins.find(x=>x.nom===mag);const v=m?.vendeurs.find(x=>x.nom===vendeur);
+  const annee=S.selectedYear||2025;
   S.modal=null;
-  optimisticUpdate(()=>{if(v){if(!v.objManuel)v.objManuel=new Array(12).fill(null);v.objManuel[mois]=val===''?null:parseFloat(val);}},()=>api('save_objectif_manuel',{societe:comp,magasin:mag,vendeur,mois,objectif:val}),'Objectif sauvegardé');
+  optimisticUpdate(()=>{if(v){if(!v.objManuel)v.objManuel=new Array(12).fill(null);v.objManuel[mois]=val===''?null:parseFloat(val);}},()=>api('save_objectif_manuel',{societe:comp,magasin:mag,vendeur,annee,mois,objectif:val}),'Objectif sauvegardé');
 };
 
 window.doDeleteObjManuel=async(comp,mag,vendeur,mois)=>{
   const c=S.data.companies[comp];const m=c?.magasins.find(x=>x.nom===mag);const v=m?.vendeurs.find(x=>x.nom===vendeur);
+  const annee=S.selectedYear||2025;
   S.modal=null;
-  optimisticUpdate(()=>{if(v){if(!v.objManuel)v.objManuel=new Array(12).fill(null);v.objManuel[mois]=null;}},()=>api('save_objectif_manuel',{societe:comp,magasin:mag,vendeur,mois,objectif:''}),'Objectif manuel supprimé');
+  optimisticUpdate(()=>{if(v){if(!v.objManuel)v.objManuel=new Array(12).fill(null);v.objManuel[mois]=null;}},()=>api('save_objectif_manuel',{societe:comp,magasin:mag,vendeur,annee,mois,objectif:''}),'Objectif manuel supprimé');
 };
 
 window.doSavePalier=async(comp)=>{
@@ -2718,10 +2835,11 @@ window.doResetFormuleMag=async(comp,magNom,year,mois)=>{
 
 // ── Helpers : primes volants basées sur participation CA ──────────────────
 function getStoreTotalVolantPrimeMois(cn,comp,mag,ca25,mois,year){
+  if(!isResultMonthAllowed(year,mois))return 0;
   const vcsInStore=(S.volantCA||[]).filter(x=>x.societe===cn&&x.magasin===mag.nom&&x.mois===mois&&x.ca>0);
   if(!vcsInStore.length)return 0;
   const firstV=mag.vendeurs[0];if(!firstV)return 0;
-  const storeCa=firstV.caSheetAuto?.[mois]??firstV.caSaisie?.[mois];
+  const storeCa=firstV.caSaisie?.[mois]??firstV.caSheetAuto?.[mois];
   if(!storeCa||storeCa<=0)return 0;
   const formuleMois=getFormuleMois(comp,year,mois,mag);const augm=(formuleMois.augmentation!=null?formuleMois.augmentation:2);
   const storeObj=firstV.objManuel?.[mois]??firstV.objSheetAuto?.[mois]??calcObj(ca25,augm,mois);
@@ -2735,6 +2853,7 @@ function getStoreTotalVolantPrimeMois(cn,comp,mag,ca25,mois,year){
 }
 
 function getAlternantTotalPrimeMois(cn,comp,alt,mois,year){
+  if(!isResultMonthAllowed(year,mois))return 0;
   const je=alt.joursEcole?.[mois]??0;const jent=alt.joursEntreprise?.[mois]??0;
   if(je<=0&&jent<=0)return 0;
   // Les alternants ne sont actifs que s'ils sont en période et ne sont pas en CDI
@@ -2745,7 +2864,7 @@ function getAlternantTotalPrimeMois(cn,comp,alt,mois,year){
   if(!mag)return 0;
   const magCa25=mag.totalCA2025??100000;
   const firstV=mag.vendeurs[0];if(!firstV)return 0;
-  const storeCa=firstV.caSheetAuto?.[mois]??firstV.caSaisie?.[mois];
+  const storeCa=firstV.caSaisie?.[mois]??firstV.caSheetAuto?.[mois];
   if(!storeCa||storeCa<=0)return 0;
   const formuleMois=getFormuleMois(comp,year,mois,mag);const augm=(formuleMois.augmentation!=null?formuleMois.augmentation:2);
   const storeObj=firstV.objManuel?.[mois]??firstV.objSheetAuto?.[mois]??calcObj(magCa25,augm,mois);
@@ -2756,6 +2875,7 @@ function getAlternantTotalPrimeMois(cn,comp,alt,mois,year){
 }
 
 function getVolantTotalPrimeMois(cn,comp,vl,mois,year){
+  if(!isResultMonthAllowed(year,mois))return 0;
   const vjsInMois=(S.volantJours||[]).filter(x=>x.societe===cn&&x.volant===vl.nom&&x.mois===mois&&x.jours>0);
   if(!vjsInMois.length)return 0;
   const totalJoursMags=vjsInMois.reduce((s,vj)=>s+vj.jours,0);
@@ -2768,7 +2888,7 @@ function getVolantTotalPrimeMois(cn,comp,vl,mois,year){
     const mag=comp.magasins.find(m=>m.nom===vj.magasin);if(!mag)continue;
     const magCa25=mag.totalCA2025||100000;
     const firstV=mag.vendeurs[0];if(!firstV)continue;
-    const storeCa=firstV.caSheetAuto?.[mois]??firstV.caSaisie?.[mois];
+    const storeCa=firstV.caSaisie?.[mois]??firstV.caSheetAuto?.[mois];
     if(!storeCa||storeCa<=0)continue;
     const formuleMois=getFormuleMois(comp,year,mois,mag);const augm=(formuleMois.augmentation!=null?formuleMois.augmentation:2);
     const storeObj=firstV.objManuel?.[mois]??firstV.objSheetAuto?.[mois]??calcObj(magCa25,augm,mois);
@@ -2780,6 +2900,7 @@ function getVolantTotalPrimeMois(cn,comp,vl,mois,year){
 }
 
 function getAlternantTotalPrimeMois(cn,comp,alt,mois,year){
+  if(!isResultMonthAllowed(year,mois))return 0;
   const ajsInMois=(S.alternantJours||[]).filter(x=>x.societe===cn&&x.alternant===alt.nom&&x.mois===mois&&x.jours>0);
   if(!ajsInMois.length)return 0;
   const totalJoursMags=ajsInMois.reduce((s,aj)=>s+aj.jours,0);
@@ -2791,7 +2912,7 @@ function getAlternantTotalPrimeMois(cn,comp,alt,mois,year){
     const mag=comp.magasins.find(m=>m.nom===aj.magasin);if(!mag)continue;
     const magCa25=mag.totalCA2025||100000;
     const firstV=mag.vendeurs[0];if(!firstV)continue;
-    const storeCa=firstV.caSheetAuto?.[mois]??firstV.caSaisie?.[mois];
+    const storeCa=firstV.caSaisie?.[mois]??firstV.caSheetAuto?.[mois];
     if(!storeCa||storeCa<=0)continue;
     const formuleMois=getFormuleMois(comp,year,mois,mag);const augm=(formuleMois.augmentation!=null?formuleMois.augmentation:2);
     const storeObj=firstV.objManuel?.[mois]??firstV.objSheetAuto?.[mois]??calcObj(magCa25,augm,mois);
@@ -2812,26 +2933,29 @@ window.doSaveVolantCA=async(comp,volant,magasin,mois,ca)=>{
 
 window.doSaveVolantJours=async(comp,volant,magasin,mois,jours)=>{
   const j=parseInt(jours)||0;
+  const annee=S.selectedYear||2025;
   optimisticUpdate(()=>{
     S.volantJours=S.volantJours.filter(x=>!(x.societe===comp&&x.volant===volant&&x.magasin===magasin&&x.mois===mois));
-    if(j>0)S.volantJours.push({societe:comp,volant,magasin,mois,jours:j});
-  },()=>api('save_volant_jours',{societe:comp,volant,magasin,mois,jours:j}),'Jours volant sauvegardés');
+    if(j>0)S.volantJours.push({societe:comp,volant,magasin,annee,mois,jours:j});
+  },()=>api('save_volant_jours',{societe:comp,volant,magasin,annee,mois,jours:j}),'Jours volant sauvegardés');
 };
 
 window.doSaveVolantAbsences=async(comp,volant,mois,jours)=>{
   const j=parseInt(jours)||0;
+  const annee=S.selectedYear||2025;
   optimisticUpdate(()=>{
     S.volantAbsences=(S.volantAbsences||[]).filter(x=>!(x.societe===comp&&x.volant===volant&&x.mois===mois));
-    if(j>0)S.volantAbsences.push({societe:comp,volant,mois,jours:j});
-  },()=>api('save_volant_absences',{societe:comp,volant,mois,jours:j}),'Absences volant sauvegardées');
+    if(j>0)S.volantAbsences.push({societe:comp,volant,annee,mois,jours:j});
+  },()=>api('save_volant_absences',{societe:comp,volant,annee,mois,jours:j}),'Absences volant sauvegardées');
 };
 
 window.doSaveAlternantAbsences=async(comp,alternant,mois,jours)=>{
   const j=parseInt(jours)||0;
+  const annee=S.selectedYear||2025;
   optimisticUpdate(()=>{
     S.alternantAbsences=(S.alternantAbsences||[]).filter(x=>!(x.societe===comp&&x.alternant===alternant&&x.mois===mois));
-    if(j>0)S.alternantAbsences.push({societe:comp,alternant,mois,jours:j});
-  },()=>api('save_alternant_absences',{societe:comp,alternant,mois,jours:j}),'Absences alternant sauvegardées');
+    if(j>0)S.alternantAbsences.push({societe:comp,alternant,annee,mois,jours:j});
+  },()=>api('save_alternant_absences',{societe:comp,alternant,annee,mois,jours:j}),'Absences alternant sauvegardées');
 };
 
 window.doAddVendeur=async(comp,mag)=>{
@@ -3060,13 +3184,21 @@ window.doRemoveAlternant=async(comp,nom)=>{
 
 window.doSaveAlternantJours=async(comp,nom,type,mois,jours)=>{
   const j=parseInt(jours)||0;
+  const annee=S.selectedYear||2025;
   const alt=S.data.companies[comp]?.alternants?.find(a=>a.nom===nom);
   if(!alt)return;
   const arrKey=type==='ecole'?'joursEcole':'joursEntreprise';
   optimisticUpdate(()=>{
     if(!alt[arrKey])alt[arrKey]={};
     if(j>0)alt[arrKey][mois]=j;else delete alt[arrKey][mois];
-  },()=>api('save_alternant_jours',{societe:comp,nom,type,mois,jours:j}),'Jours alternant sauvegardés');
+    if(type==='ecole'){
+      S.alternantEcole=(S.alternantEcole||[]).filter(x=>!(x.societe===comp&&x.alternant===nom&&x.mois===mois));
+      if(j>0)S.alternantEcole.push({societe:comp,alternant:nom,annee,mois,jours:j});
+    }
+  },()=>type==='ecole'
+      ? api('save_alternant_ecole',{societe:comp,alternant:nom,annee,mois,jours:j})
+      : api('save_alternant_jours',{societe:comp,alternant:nom,magasin:'',annee,mois,jours:j})
+    ,'Jours alternant sauvegardés');
 };
 
 window.doSaveAlternantEcole=async(comp,nom,mois,jours)=>{
@@ -3074,10 +3206,11 @@ window.doSaveAlternantEcole=async(comp,nom,mois,jours)=>{
 
 window.doSaveAlternantJoursMagasin=async(comp,alternant,magasin,mois,jours)=>{
   const j=parseInt(jours)||0;
+  const annee=S.selectedYear||2025;
   optimisticUpdate(()=>{
     S.alternantJours=S.alternantJours.filter(x=>!(x.societe===comp&&x.alternant===alternant&&x.magasin===magasin&&x.mois===mois));
-    if(j>0)S.alternantJours.push({societe:comp,alternant,magasin,mois,jours:j});
-  },()=>api('save_alternant_jours',{societe:comp,alternant,magasin,mois,jours:j}),'Jours sauvegardés');
+    if(j>0)S.alternantJours.push({societe:comp,alternant,magasin,annee,mois,jours:j});
+  },()=>api('save_alternant_jours',{societe:comp,alternant,magasin,annee,mois,jours:j}),'Jours sauvegardés');
 };
 
 window.doSaveAlternantCDI=async(comp,nom,dateCDI)=>{
@@ -3126,6 +3259,10 @@ window.doExport=()=>{
         let tp=0;
         let cells='';
         for(let m=0;m<12;m++){
+          if(!isResultMonthAllowed(year,m)){
+            cells+=`<td class="num"></td><td class="num"></td><td class="num"></td><td class="num"></td>`;
+            continue;
+          }
           const formuleMois=getFormuleMois(comp,year,m,mag);
           const obj=v.objManuel?.[m]??v.objSheetAuto?.[m]??calcObj(ca25,formuleMois.augmentation??2,m);
           const ca=v.caSaisie?.[m]??v.caSheetAuto?.[m];
@@ -3182,9 +3319,9 @@ async function autoLogin(){
   try{const r=await api('check_password');
     if(r.success){sessionStorage.setItem('primes_password',S.password);S.phase='main';render();
       const data=await api('get_all_data');
-      S.data=data;S.volantJours=data.volantJours||[];S.volantCA=data.volantCA||[];S.volantAbsences=data.volantAbsences||[];S.alternantJours=data.alternantJours||[];S.alternantAbsences=data.alternantAbsences||[];S.activeComp=Object.keys(data.companies)[0]||'';
+      S.data=data;S.volantCA=[];S.activeComp=Object.keys(data.companies)[0]||'';
       await loadAvailableYears();
-      await loadCAData();
+      await reloadSelectedYearData({renderAfter:false});
       startAutoRefresh();
       S.loading=false;render();}
     else{sessionStorage.removeItem('primes_password');S.loginError='Mot de passe expiré';S.loading=false;S.password='';render();}}
