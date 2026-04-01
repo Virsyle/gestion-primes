@@ -351,13 +351,43 @@ function getCurrentCalendarContext(){
   return{year:now.getFullYear(),month:now.getMonth()};
 }
 
-function isResultMonthAllowed(year,mois){
+function getFallbackResultMonthLimit(year){
   const targetYear=Number(year);
-  const targetMonth=Number(mois);
   const current=getCurrentCalendarContext();
-  if(targetYear<current.year)return true;
-  if(targetYear>current.year)return false;
-  return targetMonth<=current.month;
+  if(targetYear<current.year)return 11;
+  if(targetYear>current.year)return -1;
+  return current.month;
+}
+
+function getResultMonthLimit(year){
+  const targetYear=Number(year);
+  const storedLimit=S.yearDataLimits?.[targetYear];
+  if(Number.isInteger(storedLimit))return storedLimit;
+  return getFallbackResultMonthLimit(targetYear);
+}
+
+function getLastLoadedMonth(magasins,field){
+  let lastMonth=-1;
+  for(let m=0;m<12;m++){
+    const hasValue=(magasins||[]).some(mag=>{
+      const value=mag?.[field]?.[m];
+      return Number.isFinite(value)&&value>0;
+    });
+    if(hasValue)lastMonth=m;
+  }
+  return lastMonth;
+}
+
+function updateYearDataLimitsFromCA(year,magasins){
+  const targetYear=Number(year);
+  if(!S.yearDataLimits)S.yearDataLimits={};
+  S.yearDataLimits[targetYear]=getLastLoadedMonth(magasins,'ca');
+  const previousYearLimit=getLastLoadedMonth(magasins,'caN1');
+  if(previousYearLimit>=0)S.yearDataLimits[targetYear-1]=previousYearLimit;
+}
+
+function isResultMonthAllowed(year,mois){
+  return Number(mois)<=getResultMonthLimit(year);
 }
 
 function getResultMonths(year,selectedMois=null){
@@ -417,6 +447,11 @@ function applyYearInputData(payload){
     const v=vendeurIndex[`${row.societe}|||${row.magasin}|||${row.vendeur}`];
     if(!v)continue;
     v.caSaisie[row.mois]=row.ca;
+    if(Number.isFinite(row.ca)&&row.ca>0){
+      const targetYear=Number(S.selectedYear||2025);
+      const currentLimit=S.yearDataLimits?.[targetYear];
+      S.yearDataLimits[targetYear]=Number.isInteger(currentLimit)?Math.max(currentLimit,row.mois):row.mois;
+    }
   }
   for(const row of(payload.objectifsManuels||[])){
     const v=vendeurIndex[`${row.societe}|||${row.magasin}|||${row.vendeur}`];
@@ -455,7 +490,7 @@ async function reloadSelectedYearData(opts={}){
 let S={phase:'login',password:'',data:null,activeComp:'',mois:'all',view:'gestion',loading:false,modal:null,volantJours:[],volantCA:[],volantAbsences:[],alternantJours:[],alternantEcole:[],alternantAbsences:[],
   fixSearch:'',fixFilter:'all',volSearch:'',volFilter:'all',subTab:'fixes',
   recapMode:'annuel',recapMois:0,rhSocTab:'all',globalSearch:'',recapSearch:'',
-  selectedYear:2025,availableYears:[],caDataLoaded:false,caCache:{},gestionTab:'fixes'};
+  selectedYear:2025,availableYears:[],caDataLoaded:false,caCache:{},yearDataLimits:{},gestionTab:'fixes'};
 
 
 // ══════ GLOBAL SEARCH ══════
@@ -2436,6 +2471,8 @@ window.loadCAData=async function(opts={}){
   const year=S.selectedYear||2025;
   try{
     if(!S.data)return;
+    if(!S.yearDataLimits)S.yearDataLimits={};
+    S.yearDataLimits[year]=-1;
 
     // Construire les formules pour CHAQUE magasin de CHAQUE société
     const formulesParSocieteMagasin={};
@@ -2464,6 +2501,7 @@ window.loadCAData=async function(opts={}){
     }
     const result=await api('get_ca_and_objectives',{year,formulesParSocieteMagasin,nomCAMappings});
     if(result.magasins){
+      updateYearDataLimitsFromCA(year,result.magasins);
       applyCAToVendeurs(result.magasins);
       // IMPORTANT: Reapply augmentation changes for ALL companies (applyCAToVendeurs affects all)
       for(const[compName,comp]of Object.entries(S.data.companies)){
