@@ -2458,23 +2458,31 @@ function startAutoRefresh(){
   // Clear existing timer if any
   if(autoRefreshTimer) clearInterval(autoRefreshTimer);
 
-  // Refresh every 1 minute (60000 ms) mais ne recharger que si inactif 10s
+  // Refresh every 15 seconds - recharge la structure complète (vendeurs, magasins) + CA
   autoRefreshTimer = setInterval(async ()=>{
     if(isRefreshing) return; // éviter les refreshes simultanés
+    if(S.modal) return; // Ne pas recharger si un modal est ouvert
     const timeSinceActivity = Date.now() - lastActivityTime;
-    if(timeSinceActivity < 10000) return; // utilisateur actif, ne pas interrompre
+    if(timeSinceActivity < 15000) return; // utilisateur actif, ne pas interrompre
     isRefreshing = true;
     try{
-      await reloadSelectedYearData({renderAfter:false});
+      // Recharger la structure complète (vendeurs, magasins, volants, alternants, etc.)
+      const data = await api('get_all_data');
+      S.data = data;
+
+      // Recharger aussi les CA pour l'année courante
+      await loadCAData({renderAfter:false});
+      await loadYearInputData({renderAfter:false});
+
       render();
     }catch(e){
       console.error('❌ Erreur auto-refresh:',e);
     }finally{
       isRefreshing = false;
     }
-  }, 60000); // 1 minute
+  }, 15000); // 15 secondes
 
-  console.log('✅ Auto-refresh CA activé (toutes les 1 minute, render si inactif 10s+)');
+  console.log('✅ Auto-refresh activé (toutes les 15s: structure + CA si inactif 15s+)');
 }
 
 // ═══ NOUVEAU : Chargement des années disponibles ═══
