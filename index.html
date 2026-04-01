@@ -1201,6 +1201,7 @@ function renderMag(mag,mi,comp){
             ${isP
               ?`<button class="vend-menu-item" onclick="toggleVendMenu('${menuId}');doToggleParti('${ac}','${esc(mag.nom)}','${esc(v.nom)}',false)">↩ Revenu</button>`
               :`<button class="vend-menu-item" onclick="toggleVendMenu('${menuId}');doToggleParti('${ac}','${esc(mag.nom)}','${esc(v.nom)}',true)">🚪 Parti</button>`}
+            <button class="vend-menu-item" onclick="toggleVendMenu('${menuId}');doConvertVendeurType('${ac}','${esc(v.nom)}','fixe','${esc(mag.nom)}')">🔁 Passer volant</button>
             <button class="vend-menu-item" onclick="toggleVendMenu('${menuId}');showRemplaceVendeurModal('${ac}','${esc(mag.nom)}','${esc(v.nom)}')">🔄 Remplacer</button>
             <button class="vend-menu-item danger" onclick="toggleVendMenu('${menuId}');doRemoveVendeur('${ac}','${esc(mag.nom)}','${esc(v.nom)}')">× Supprimer</button>
           </div>
@@ -1250,6 +1251,8 @@ function renderVolSection(comp){
       volantsActifs.forEach(v=>{h+=`<div class="vol-chip">
         <span class="badge-vol">VOL</span><b>${v.nom}</b>
         <span style="color:var(--tx3);font-size:10px">2025: ${fmtE(v.p25)}</span>
+        <button style="background:none;border:none;color:#7c3aed;font-size:14px;cursor:pointer" onclick="doToggleVolantParti('${ac}','${esc(v.nom)}')">🚪</button>
+        <button style="background:none;border:none;color:#2563eb;font-size:14px;cursor:pointer" onclick="doConvertVendeurType('${ac}','${esc(v.nom)}','volant','')">📌</button>
         <button style="background:none;border:none;color:#a78bfa;font-size:14px;cursor:pointer" onclick="doRemoveVolant('${ac}','${esc(v.nom)}')">×</button>
         </div>`;});h+=`</div>`;
     }
@@ -3049,6 +3052,15 @@ window.doReactiverVolant=async(comp,nom)=>{
   optimisticUpdate(()=>{if(v){v.dateParti=null;v.parti=false;}},()=>api('toggle_volant_parti',{societe:comp,volant:nom,parti:'0'}),nom+' est de retour');
 };
 
+window.doToggleVolantParti=async(comp,nom)=>{
+  const c=S.data.companies[comp];const v=c?.volants?.find(x=>x.nom===nom);
+  if(!v)return;
+  const dateStr=prompt('Date de départ (mm/yyyy):','03/2025');if(!dateStr)return;
+  const [mo,an]=dateStr.split('/');if(!mo||!an)return;
+  const dateParti=`${an}-${mo.padStart(2,'0')}`;
+  optimisticUpdate(()=>{v.dateParti=dateParti;v.parti=true;},()=>api('toggle_volant_parti',{societe:comp,volant:nom,parti:'1',dateParti}),nom+' archivé');
+};
+
 window.doReactiverAlternant=async(comp,nom)=>{
   const c=S.data.companies[comp];const a=c?.alternants?.find(x=>x.nom===nom);
   optimisticUpdate(()=>{if(a){a.dateParti=null;a.parti=false;}},()=>api('toggle_alternant_parti',{societe:comp,alternant:nom,parti:'0'}),nom+' est de retour');
@@ -3103,6 +3115,40 @@ window.doAssignMagasin=async(comp,nom,newMagasin)=>{
     nonAssigne.vendeurs=nonAssigne.vendeurs.filter(x=>x.nom!==nom);
     targetMag.vendeurs.push(v);
   },()=>api('assign_vendeur_magasin',{societe:comp,vendeur:nom,magasin:newMagasin.trim()}),nom+' assigné à '+newMagasin);
+};
+
+window.doConvertVendeurType=async(comp,nom,fromType,mag)=>{
+  const c=S.data.companies[comp];if(!c)return;
+  const dateStr=prompt('Date d\'effet (mm/yyyy):','03/2025');if(!dateStr)return;
+  const [mo,an]=dateStr.split('/');if(!mo||!an)return;
+  const dateEffet=`${an}-${mo.padStart(2,'0')}`;
+  let magasinCible='';
+  if(fromType==='volant'){
+    const mags=c.magasins.map(m=>m.nom).filter(n=>n!=='Non assigné'&&!isSystemMagasin(n));
+    magasinCible=prompt('Magasin d\'affectation :',mags[0]||'')||'';
+    if(!magasinCible.trim()){toast('Entrez un magasin');return;}
+  }
+
+  optimisticUpdate(()=>{
+    if(fromType==='fixe'){
+      const sourceMag=c.magasins.find(m=>m.nom===mag);
+      const vendeur=sourceMag?.vendeurs?.find(v=>v.nom===nom);
+      if(!vendeur)return;
+      sourceMag.vendeurs=sourceMag.vendeurs.filter(v=>v.nom!==nom);
+      if(!c.volants)c.volants=[];
+      c.volants.push({...vendeur,type:'volant',dateTransition:dateEffet,parti:false});
+    }else{
+      const vendeur=c.volants?.find(v=>v.nom===nom);
+      if(!vendeur)return;
+      c.volants=c.volants.filter(v=>v.nom!==nom);
+      let targetMag=c.magasins.find(m=>m.nom===magasinCible.trim());
+      if(!targetMag){
+        targetMag={nom:magasinCible.trim(),vendeurs:[],totalCA2025:0};
+        c.magasins.push(targetMag);
+      }
+      targetMag.vendeurs.push({...vendeur,type:'fixe',dateTransition:dateEffet,parti:false});
+    }
+  },()=>api('convert_vendeur_type',{societe:comp,vendeur:nom,fromType,toType:fromType==='fixe'?'volant':'fixe',magasin:magasinCible.trim(),dateEffet}),nom+' a changé de type');
 };
 
 window.doRemoveVendeur=async(comp,mag,nom)=>{
