@@ -239,6 +239,21 @@ const fmtPrime=n=>n==null?'—':parseFloat(n.toFixed(2)).toLocaleString('fr-FR',
 const fmtDate=d=>{if(!d)return'';const dt=new Date(d);if(isNaN(dt))return String(d);const j=String(dt.getDate()).padStart(2,'0');const m=String(dt.getMonth()+1).padStart(2,'0');const y=dt.getFullYear();return`${j}/${m}/${y}`;};
 const extractYearMonth=d=>{if(!d)return null;const dt=new Date(d);if(isNaN(dt))return null;return`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;};
 const calcObj=(ca,aug,m)=>Math.round(ca*(1+(aug/100))*SAISON[m]);
+function sameFormule(a,b){
+  if(!a||!b)return false;
+  return (a.poidsY1??70)===(b.poidsY1??70)
+    && (a.poidsM1??30)===(b.poidsM1??30)
+    && (a.augmentation??2)===(b.augmentation??2);
+}
+function getFormuleTousMois(comp,year){
+  const fallback={poidsY1:comp.poidsY1??70,poidsM1:comp.poidsM1??30,augmentation:comp.augmentation??2};
+  const formule=comp.formules?.[year];
+  if(!formule)return fallback;
+  if(!Array.isArray(formule))return formule;
+  const nonNull=formule.filter(Boolean);
+  if(!nonNull.length)return fallback;
+  return nonNull.every(x=>sameFormule(x,nonNull[0]))?nonNull[0]:fallback;
+}
 // Récupérer la formule pour un mois donné (gère l'ancien et nouveau format)
 function getFormuleMois(comp,year,mois,mag=null){
   // Override par magasin en priorité
@@ -963,15 +978,7 @@ function renderFormule(comp){
 
   // Si S.mois === 'all', afficher la formule par défaut (tous les mois)
   if(S.mois==='all'){
-    let formule=comp.formules?.[year];
-    // Si formules[year] est un Array (formules mensuelles), utiliser les valeurs globales
-    if(Array.isArray(formule)){
-      formule={poidsY1:comp.poidsY1??70,poidsM1:comp.poidsM1??30,augmentation:comp.augmentation??2};
-    }
-    // Si toujours pas de formule, utiliser les valeurs par défaut
-    if(!formule){
-      formule={poidsY1:comp.poidsY1??70,poidsM1:comp.poidsM1??30,augmentation:(comp.augmentation!=null?comp.augmentation:2)};
-    }
+    const formule=getFormuleTousMois(comp,year);
     const py1=formule.poidsY1??70;
     const pm1=formule.poidsM1??30;
     const aug=(formule.augmentation!=null?formule.augmentation:2);
@@ -2804,15 +2811,11 @@ function recalculateObjectivesWithNewAugmentation(comp, year) {
 window.doSaveFormule=async(comp,year,y1,m1,aug)=>{
   const augVal=parseFloat(aug);
   const augToSave=(augVal!=null&&!isNaN(augVal))?augVal:2;
+  const formuleAnnee={poidsY1:parseInt(y1)||70,poidsM1:parseInt(m1)||30,augmentation:augToSave};
 
   // Mise à jour locale immédiate
   if(!S.data.companies[comp].formules)S.data.companies[comp].formules={};
-  if(!Array.isArray(S.data.companies[comp].formules[year])){
-    S.data.companies[comp].formules[year]={poidsY1:parseInt(y1)||70,poidsM1:parseInt(m1)||30,augmentation:augToSave};
-  }
-  S.data.companies[comp].poidsY1=parseInt(y1)||70;
-  S.data.companies[comp].poidsM1=parseInt(m1)||30;
-  S.data.companies[comp].augmentation=augToSave;
+  S.data.companies[comp].formules[year]=Array.from({length:12},()=>({...formuleAnnee}));
 
   // Recalcul immédiat des objectifs (nanoseconde)
   recalculateObjectivesWithNewAugmentation(comp, year);
@@ -2821,9 +2824,9 @@ window.doSaveFormule=async(comp,year,y1,m1,aug)=>{
   // Sauvegarde en arrière-plan NON-BLOQUANTE
   (async ()=>{
     try{
-      await api('save_augmentation',{societe:comp,augmentation:augToSave,poidsY1:y1,poidsM1:m1});
-      // NE PAS recharger les données - changement d'augmentation ne modifie pas le sheet
-      // L'auto-refresh (toutes les 1min) mettra à jour si nécessaire
+      await Promise.all([...Array(12).keys()].map(mois=>
+        api('save_formule_mois',{societe:comp,annee:year,mois,poidsY1:y1,poidsM1:m1,augmentation:augToSave})
+      ));
       toast('✅ Formule sauvegardée pour '+year);
     }catch(e){toast('❌ Erreur: '+e.message);}
   })();
