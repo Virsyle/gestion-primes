@@ -3365,14 +3365,56 @@ window.doExport=()=>{
     rows.push([title]);
   };
 
+  const getVolantPrimeExport=(cn,comp,vl,mois)=>{
+    const vjsInMois=(S.volantJours||[]).filter(x=>x.societe===cn&&x.volant===vl.nom&&x.mois===mois&&x.jours>0);
+    if(!vjsInMois.length)return 0;
+    const totalJoursMags=vjsInMois.reduce((s,vj)=>s+vj.jours,0);
+    const absEntry=(S.volantAbsences||[]).find(x=>x.societe===cn&&x.volant===vl.nom&&x.mois===mois);
+    const diviseur=totalJoursMags+(absEntry?.jours||0);
+    if(diviseur<=0)return 0;
+    let total=0;
+    for(const vj of vjsInMois){
+      const mag=comp.magasins.find(m=>m.nom===vj.magasin);if(!mag)continue;
+      const firstV=mag.vendeurs[0];if(!firstV)continue;
+      const storeCa=firstV.caSaisie?.[mois]??firstV.caSheetAuto?.[mois];
+      if(!storeCa||storeCa<=0)continue;
+      const formuleMois=getFormuleMois(comp,year,mois,mag);
+      const augm=formuleMois.augmentation??2;
+      const storeObj=firstV.objManuel?.[mois]??firstV.objSheetAuto?.[mois]??calcObj(mag.totalCA2025||100000,augm,mois);
+      const primeMag=calcPrime((storeCa/storeObj)*100,getPaliersMois(comp,mois));
+      if(primeMag<=0)continue;
+      total+=parseFloat(((vj.jours/diviseur)*primeMag).toFixed(2));
+    }
+    return total;
+  };
+
+  const getAlternantPrimeExport=(cn,comp,alt,mois)=>{
+    const ajsInMois=(S.alternantJours||[]).filter(x=>x.societe===cn&&x.alternant===alt.nom&&x.mois===mois&&x.jours>0);
+    if(!ajsInMois.length)return 0;
+    const totalJoursMags=ajsInMois.reduce((s,aj)=>s+aj.jours,0);
+    const joursEcole=alt.joursEcole?.[mois]??0;
+    const diviseur=totalJoursMags+joursEcole;
+    if(diviseur<=0)return 0;
+    let total=0;
+    for(const aj of ajsInMois){
+      const mag=comp.magasins.find(m=>m.nom===aj.magasin);if(!mag)continue;
+      const firstV=mag.vendeurs[0];if(!firstV)continue;
+      const storeCa=firstV.caSaisie?.[mois]??firstV.caSheetAuto?.[mois];
+      if(!storeCa||storeCa<=0)continue;
+      const formuleMois=getFormuleMois(comp,year,mois,mag);
+      const augm=formuleMois.augmentation??2;
+      const storeObj=firstV.objManuel?.[mois]??firstV.objSheetAuto?.[mois]??calcObj(mag.totalCA2025||100000,augm,mois);
+      const primeMag=calcPrime((storeCa/storeObj)*100,getPaliersMois(comp,mois));
+      if(primeMag<=0)continue;
+      total+=parseFloat(((aj.jours/diviseur)*primeMag).toFixed(2));
+    }
+    return total;
+  };
+
   const buildFixedRow=(comp,mag,v)=>{
     const row=[v.nom,mag.nom,'FIXE',v.parti?'Parti':'Actif',Number(v.p25)||0];
     let total=0;
     for(let m=0;m<12;m++){
-      if(!isResultMonthAllowed(year,m)){
-        row.push('','','','');
-        continue;
-      }
       const formuleMois=getFormuleMois(comp,year,m,mag);
       const augm=formuleMois.augmentation??2;
       const obj=v.objManuel?.[m]??v.objSheetAuto?.[m]??calcObj(mag.totalCA2025||100000,augm,m);
@@ -3390,11 +3432,7 @@ window.doExport=()=>{
     const row=[vl.nom,'Multi-magasins','VOLANT',vl.parti?'Parti':'Actif',Number(vl.p25)||0];
     let total=0;
     for(let m=0;m<12;m++){
-      if(!isResultMonthAllowed(year,m)){
-        row.push('','','','');
-        continue;
-      }
-      const prime=getVolantTotalPrimeMois(cn,comp,vl,m,year);
+      const prime=getVolantPrimeExport(cn,comp,vl,m);
       if(prime)total+=prime;
       row.push('','','',prime||'');
     }
@@ -3406,11 +3444,7 @@ window.doExport=()=>{
     const row=[alt.nom,alt.magasin||'Multi-magasins','ALTERNANT',alt.parti?'Parti':'Actif',Number(alt.p25)||0];
     let total=0;
     for(let m=0;m<12;m++){
-      if(!isResultMonthAllowed(year,m)){
-        row.push('','','','');
-        continue;
-      }
-      const prime=getAlternantTotalPrimeMois(cn,comp,alt,m,year);
+      const prime=getAlternantPrimeExport(cn,comp,alt,m);
       if(prime)total+=prime;
       row.push('','','',prime||'');
     }
