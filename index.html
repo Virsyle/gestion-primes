@@ -461,6 +461,7 @@ function applyYearInputData(payload){
   for(const row of(payload.caManuels||[])){
     const v=vendeurIndex[`${row.societe}|||${row.magasin}|||${row.vendeur}`];
     if(!v)continue;
+    if(!v.caSaisie)v.caSaisie=new Array(12).fill(null);
     v.caSaisie[row.mois]=row.ca;
     if(Number.isFinite(row.ca)&&row.ca>0){
       const targetYear=Number(S.selectedYear||2025);
@@ -471,6 +472,7 @@ function applyYearInputData(payload){
   for(const row of(payload.objectifsManuels||[])){
     const v=vendeurIndex[`${row.societe}|||${row.magasin}|||${row.vendeur}`];
     if(!v)continue;
+    if(!v.objManuel)v.objManuel=new Array(12).fill(null);
     v.objManuel[row.mois]=row.objectif;
   }
   for(const row of(payload.alternantEcole||[])){
@@ -3031,7 +3033,7 @@ window.doSaveAlternantAbsences=async(comp,alternant,mois,jours)=>{
 window.doAddVendeur=async(comp,mag)=>{
   const nom=document.getElementById('newVendNom')?.value?.trim();if(!nom){toast('Entrez un nom');return;}
   const c=S.data.companies[comp];const m=c?.magasins.find(x=>x.nom===mag);
-  optimisticUpdate(()=>{S.modal=null;if(m)m.vendeurs.push({nom,type:'fixe',p25:0,parti:false});},()=>api('add_vendeur',{societe:comp,nom,magasin:mag}),'Vendeur ajouté');
+  optimisticUpdate(()=>{S.modal=null;if(m)m.vendeurs.push({nom,type:'fixe',p25:0,parti:false,caSaisie:new Array(12).fill(null),objManuel:new Array(12).fill(null),caSheetAuto:new Array(12).fill(null),objSheetAuto:new Array(12).fill(null)});},()=>api('add_vendeur',{societe:comp,nom,magasin:mag}),'Vendeur ajouté');
 };
 
 window.toggleVendMenu=function(menuId){
@@ -3154,7 +3156,7 @@ window.doConvertVendeurType=async(comp,nom,fromType,mag)=>{
         targetMag={nom:magasinCible.trim(),vendeurs:[],totalCA2025:0};
         c.magasins.push(targetMag);
       }
-      targetMag.vendeurs.push({...vendeur,type:'fixe',dateTransition:dateEffet,parti:false});
+      targetMag.vendeurs.push({...vendeur,type:'fixe',dateTransition:dateEffet,parti:false,caSaisie:new Array(12).fill(null),objManuel:new Array(12).fill(null),caSheetAuto:new Array(12).fill(null),objSheetAuto:new Array(12).fill(null)});
     }
   },()=>api('convert_vendeur_type',{societe:comp,vendeur:nom,fromType,toType:fromType==='fixe'?'volant':'fixe',magasin:magasinCible.trim(),dateEffet}),nom+' a changé de type');
 };
@@ -3217,7 +3219,7 @@ window.doAddMag=async(comp)=>{
   if(!nom){toast('Entrez un nom');return;}
   optimisticUpdate(()=>{
     S.modal=null;
-    S.data.companies[comp].magasins.push({nom,manager:mgr||S.data.companies[comp].manager||'',vendeurs:vend?[{nom:vend,type:'fixe',p25:0,parti:false}]:[],totalCA2025:0});
+    S.data.companies[comp].magasins.push({nom,manager:mgr||S.data.companies[comp].manager||'',vendeurs:vend?[{nom:vend,type:'fixe',p25:0,parti:false,caSaisie:new Array(12).fill(null),objManuel:new Array(12).fill(null),caSheetAuto:new Array(12).fill(null),objSheetAuto:new Array(12).fill(null)}]:[],totalCA2025:0});
   },()=>api('add_magasin',{societe:comp,nom,manager:mgr,vendeur:vend||''}),'Magasin ajouté');
 };
 
