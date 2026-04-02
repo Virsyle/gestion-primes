@@ -3345,83 +3345,131 @@ window.updateVolList=()=>render(); // volant list is simpler, just re-render
 
 window.doExport=()=>{
   const year=S.selectedYear||2025;
-  let html=`<html><head><meta charset="UTF-8"><style>
-    body{font-family:Arial,sans-serif;}
-    table{border-collapse:collapse;width:100%;margin-bottom:24px;}
-    th{background:#1e293b;color:#fff;padding:8px 10px;border:1px solid #334155;font-size:11px;text-align:left;white-space:nowrap;}
-    td{padding:6px 10px;border:1px solid #cbd5e1;font-size:11px;}
-    tr:nth-child(even) td{background:#f8fafc;}
-    .total-row td{background:#0f172a;color:#fff;font-weight:bold;}
-    .volant-header td{background:#f5f3ff;color:#6d28d9;font-weight:bold;}
-    .alt-header td{background:#f0fdf4;color:#166534;font-weight:bold;}
-    .parti td{opacity:.6;background:#fff8f8;}
-    .num{text-align:right;}
-    .soc-title{background:linear-gradient(135deg,#1e293b,#334155);color:#fff;padding:10px 14px;font-size:14px;font-weight:bold;margin-top:16px;}
-  </style></head><body>`;
+  const wb=XLSX.utils.book_new();
+  const header=['Vendeur','Magasin','Type','Statut',`Primes ${year-1}`,...M.flatMap(m=>[`Obj ${m}`,`CA ${m}`,'Taux','Prime']),`Total ${year}`];
+  const moneyFmt='# ##0.00 "€"';
+  const integerFmt='# ##0';
+  const rateFmt='0.0%';
+
+  const setCell=(ws,row,col,value,type=null,fmtCode=null)=>{
+    if(value===null||value===undefined||value==='')return;
+    const ref=XLSX.utils.encode_cell({r:row,c:col});
+    const cell={v:value};
+    if(type)cell.t=type;
+    if(fmtCode)cell.z=fmtCode;
+    ws[ref]=cell;
+  };
+
+  const appendSectionTitle=(rows,title)=>{
+    rows.push([]);
+    rows.push([title]);
+  };
+
+  const buildFixedRow=(comp,mag,v)=>{
+    const row=[v.nom,mag.nom,'FIXE',v.parti?'Parti':'Actif',Number(v.p25)||0];
+    let total=0;
+    for(let m=0;m<12;m++){
+      if(!isResultMonthAllowed(year,m)){
+        row.push('','','','');
+        continue;
+      }
+      const formuleMois=getFormuleMois(comp,year,m,mag);
+      const augm=formuleMois.augmentation??2;
+      const obj=v.objManuel?.[m]??v.objSheetAuto?.[m]??calcObj(mag.totalCA2025||100000,augm,m);
+      const ca=v.caSaisie?.[m]??v.caSheetAuto?.[m];
+      const taux=(ca!=null&&obj)?(ca/obj):null;
+      const prime=taux!=null?calcPrime(taux*100,getPaliersMois(comp,m))*(v.tempsPartielMois?.[m]??100)/100:null;
+      if(prime)total+=prime;
+      row.push(obj??'',ca??'',taux??'',prime??'');
+    }
+    row.push(total);
+    return row;
+  };
+
+  const buildVolantRow=(cn,comp,vl)=>{
+    const row=[vl.nom,'Multi-magasins','VOLANT',vl.parti?'Parti':'Actif',Number(vl.p25)||0];
+    let total=0;
+    for(let m=0;m<12;m++){
+      if(!isResultMonthAllowed(year,m)){
+        row.push('','','','');
+        continue;
+      }
+      const prime=getVolantTotalPrimeMois(cn,comp,vl,m,year);
+      if(prime)total+=prime;
+      row.push('','','',prime||'');
+    }
+    row.push(total);
+    return row;
+  };
+
+  const buildAlternantRow=(cn,comp,alt)=>{
+    const row=[alt.nom,alt.magasin||'Multi-magasins','ALTERNANT',alt.parti?'Parti':'Actif',Number(alt.p25)||0];
+    let total=0;
+    for(let m=0;m<12;m++){
+      if(!isResultMonthAllowed(year,m)){
+        row.push('','','','');
+        continue;
+      }
+      const prime=getAlternantTotalPrimeMois(cn,comp,alt,m,year);
+      if(prime)total+=prime;
+      row.push('','','',prime||'');
+    }
+    row.push(total);
+    return row;
+  };
 
   for(const[cn,comp]of Object.entries(S.data.companies)){
-    html+=`<div class="soc-title">📊 ${cn} — ${comp.manager||''}</div>`;
-    html+=`<table><thead><tr>
-      <th>Vendeur</th><th>Magasin</th><th>Type</th><th>Statut</th><th class="num">Primes ${year-1}</th>
-      ${M.map(m=>`<th class="num">Obj ${m}</th><th class="num">CA ${m}</th><th class="num">Taux</th><th class="num">Prime</th>`).join('')}
-      <th class="num">Total ${year}</th>
-    </tr></thead><tbody>`;
+    const rows=[[`${cn} - ${year}`],[comp.manager?`Manager : ${comp.manager}`:''],header];
 
     for(const mag of comp.magasins){
-      const ca25=mag.totalCA2025||100000;
       for(const v of mag.vendeurs){
-        const cls=v.parti?'parti':'';
-        let tp=0;
-        let cells='';
-        for(let m=0;m<12;m++){
-          if(!isResultMonthAllowed(year,m)){
-            cells+=`<td class="num"></td><td class="num"></td><td class="num"></td><td class="num"></td>`;
-            continue;
-          }
-          const formuleMois=getFormuleMois(comp,year,m,mag);
-          const obj=v.objManuel?.[m]??v.objSheetAuto?.[m]??calcObj(ca25,formuleMois.augmentation??2,m);
-          const ca=v.caSaisie?.[m]??v.caSheetAuto?.[m];
-          const t=ca!=null?(ca/obj)*100:null;
-          const p=calcPrime(t,getPaliersMois(comp,m))*(v.tempsPartielMois?.[m]??100)/100;
-          tp+=p;
-          const tColor=t==null?'':(t>=110?'color:#16a34a':t>=100?'color:#2563eb':t>=95?'color:#ea580c':'color:#dc2626');
-          cells+=`<td class="num">${obj?Math.round(obj).toLocaleString('fr-FR'):''}</td>
-            <td class="num">${ca!=null?Math.round(ca).toLocaleString('fr-FR'):''}</td>
-            <td class="num" style="${tColor}">${t!=null?t.toFixed(1)+'%':''}</td>
-            <td class="num">${p>0?p.toFixed(2):''}</td>`;
-        }
-        html+=`<tr class="${cls}"><td><b>${v.nom}</b></td><td>${mag.nom}</td><td>FIXE</td><td>${v.parti?'Parti':'Actif'}</td>
-          <td class="num">${(v.p25||0).toLocaleString('fr-FR')} €</td>${cells}
-          <td class="num"><b>${tp.toFixed(2)} €</b></td></tr>`;
+        rows.push(buildFixedRow(comp,mag,v));
       }
     }
 
-    // Volants
-    const volantsActifs=(comp.volants||[]).filter(v=>!v.parti);
-    if(volantsActifs.length){
-      html+=`<tr class="volant-header"><td colspan="${6+M.length*4+1}">🔄 Vendeurs Volants</td></tr>`;
-      for(const vl of volantsActifs){
-        let tp=0;let cells='';
-        for(let m=0;m<12;m++){
-          const p=getVolantTotalPrimeMois(cn,comp,vl,m,year);tp+=p;
-          cells+=`<td></td><td></td><td></td><td class="num">${p>0?p.toFixed(2):''}</td>`;
+    const volants=comp.volants||[];
+    if(volants.length){
+      appendSectionTitle(rows,'Vendeurs Volants');
+      rows.push(header);
+      volants.forEach(vl=>rows.push(buildVolantRow(cn,comp,vl)));
+    }
+
+    const alternants=comp.alternants||[];
+    if(alternants.length){
+      appendSectionTitle(rows,'Alternants');
+      rows.push(header);
+      alternants.forEach(alt=>rows.push(buildAlternantRow(cn,comp,alt)));
+    }
+
+    const ws=XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols']=[
+      {wch:24},{wch:20},{wch:12},{wch:12},{wch:14},
+      ...Array.from({length:12},()=>[{wch:14},{wch:14},{wch:10},{wch:12}]).flat(),
+      {wch:14}
+    ];
+    ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:2,c:0},e:{r:2,c:header.length-1}})};
+
+    for(let r=0;r<rows.length;r++){
+      const current=rows[r]||[];
+      for(let c=0;c<current.length;c++){
+        const value=current[c];
+        if(value===null||value===undefined||value==='')continue;
+        const isMoneyCol=c===4||c===header.length-1||(c>4&&((c-5)%4===3));
+        const isIntegerCol=c>4&&((c-5)%4===0||((c-5)%4===1));
+        const isRateCol=c>4&&((c-5)%4===2);
+        if(typeof value==='number'){
+          const fmtCode=isRateCol?rateFmt:(isMoneyCol?moneyFmt:(isIntegerCol?integerFmt:null));
+          setCell(ws,r,c,value,'n',fmtCode);
+        }else{
+          setCell(ws,r,c,value,'s');
         }
-        html+=`<tr><td><b>${vl.nom}</b></td><td>Multi-magasins</td><td>VOLANT</td><td>Actif</td>
-          <td class="num">${(vl.p25||0).toLocaleString('fr-FR')} €</td>${cells}
-          <td class="num"><b>${tp.toFixed(2)} €</b></td></tr>`;
       }
     }
 
-    html+=`</tbody></table>`;
+    XLSX.utils.book_append_sheet(wb,ws,cn.substring(0,31)||'Societe');
   }
 
-  html+=`</body></html>`;
-  const blob=new Blob([html],{type:'application/vnd.ms-excel;charset=utf-8'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;a.download=`Primes_${year}_${new Date().toISOString().split('T')[0]}.xls`;
-  document.body.appendChild(a);a.click();document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  XLSX.writeFile(wb,`Primes_${year}_${new Date().toISOString().split('T')[0]}.xlsx`);
   toast('Export téléchargé');
 };
 
