@@ -278,6 +278,15 @@ function calcPrime(t,pal){
     if(op==='>=')ok=t>=x.seuil;else if(op==='<=')ok=t<=x.seuil;else if(op==='>')ok=t>x.seuil;else ok=t<x.seuil;
     if(ok){r=x.prime;break;}}return r;}
 function ceilEuro(v){return v>0?Math.ceil(v):0;}
+function getAlternantJoursConsolides(cn,alternant,mois){
+  const rows=(S.alternantJours||[]).filter(x=>x.societe===cn&&x.alternant===alternant&&x.mois===mois&&x.jours>0);
+  const map={};
+  for(const row of rows){
+    const key=row.magasin||'';
+    map[key]=(map[key]||0)+(Number(row.jours)||0);
+  }
+  return map;
+}
 
 // Obtenir les paliers pour un mois (avec fallback aux paliers globaux)
 function getPaliersMois(comp,mois){
@@ -1474,7 +1483,8 @@ function renderAlternantSection(comp){
         // Affectations par magasin pour les alternants
         const diviseurParAlt={};
         altsM.forEach(a=>{
-          const totalJoursMags=(S.alternantJours||[]).filter(x=>x.societe===cn&&x.alternant===a.nom&&x.mois===mIdx&&x.jours>0).reduce((s,x)=>s+x.jours,0);
+          const joursConsolides=getAlternantJoursConsolides(cn,a.nom,mIdx);
+          const totalJoursMags=Object.values(joursConsolides).reduce((s,x)=>s+x,0);
           const ecoleJours=a.joursEcole?.[mIdx]??0;
           const absEntry=(S.alternantAbsences||[]).find(x=>x.societe===cn&&x.alternant===a.nom&&x.mois===mIdx);
           const joursAbs=absEntry?.jours||0;
@@ -1489,10 +1499,11 @@ function renderAlternantSection(comp){
           const storeObj=firstV.objManuel?.[mIdx]??firstV.objSheetAuto?.[mIdx]??calcObj(magCa25,augm,mIdx);
           const primeMag=calcPrime((storeCa/storeObj)*100,getPaliersMois(comp,mIdx));
           if(primeMag<=0)return 0;
-          const aj=(S.alternantJours||[]).find(x=>x.societe===cn&&x.alternant===altNom&&x.magasin===mag.nom&&x.mois===mIdx);
-          if(!aj||!aj.jours||aj.jours<=0)return 0;
+          const joursConsolides=getAlternantJoursConsolides(cn,altNom,mIdx);
+          const joursMag=joursConsolides[mag.nom]||0;
+          if(!joursMag||joursMag<=0)return 0;
           const div=diviseurParAlt[altNom]||1;
-          return parseFloat(((aj.jours/div)*primeMag).toFixed(2));
+          return parseFloat(((joursMag/div)*primeMag).toFixed(2));
         };
         h+=`<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px 14px;margin-top:12px">
           <div style="font-size:11px;font-weight:700;color:#166534;margin-bottom:8px">Affectations — ${M[mIdx]}</div>`;
@@ -1506,8 +1517,8 @@ function renderAlternantSection(comp){
           const cMag=tcMois(storeTaux,getPaliersMois(comp,mIdx));
           h+=`<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;color:var(--tx2);margin-bottom:6px">📍 ${mag.nom}</div><div class="mgrid">`;
           altsM.forEach(a=>{
-            const aj=(S.alternantJours||[]).find(x=>x.societe===cn&&x.alternant===a.nom&&x.magasin===mag.nom&&x.mois===mIdx);
-            const joursAlt=aj?aj.jours:null;
+            const joursConsolides=getAlternantJoursConsolides(cn,a.nom,mIdx);
+            const joursAlt=joursConsolides[mag.nom]||null;
             const prime=primAltMag(a.nom,mag);
             const participation=joursAlt!=null?(joursAlt/(diviseurParAlt[a.nom]||1))*100:null;
             const primeColorAlt=prime<=0?'var(--tx3)':(cMag?'tx-'+cMag:'var(--grn)');
@@ -2974,17 +2985,17 @@ function getVolantTotalPrimeMois(cn,comp,vl,mois,year){
 
 function getAlternantTotalPrimeMois(cn,comp,alt,mois,year){
   if(!isResultMonthAllowed(year,mois))return 0;
-  const ajsInMois=(S.alternantJours||[]).filter(x=>x.societe===cn&&x.alternant===alt.nom&&x.mois===mois&&x.jours>0);
-  if(!ajsInMois.length)return 0;
-  const totalJoursMags=ajsInMois.reduce((s,aj)=>s+aj.jours,0);
+  const joursConsolides=getAlternantJoursConsolides(cn,alt.nom,mois);
+  const totalJoursMags=Object.values(joursConsolides).reduce((s,x)=>s+x,0);
+  if(!totalJoursMags)return 0;
   const joursEcole=alt.joursEcole?.[mois]??0;
   const absEntry=(S.alternantAbsences||[]).find(x=>x.societe===cn&&x.alternant===alt.nom&&x.mois===mois);
   const joursAbsences=absEntry?.jours||0;
   const diviseur=totalJoursMags+joursEcole+joursAbsences;
   if(diviseur<=0)return 0;
   let total=0;
-  for(const aj of ajsInMois){
-    const mag=comp.magasins.find(m=>m.nom===aj.magasin);if(!mag)continue;
+  for(const [magNom,joursMag] of Object.entries(joursConsolides)){
+    const mag=comp.magasins.find(m=>m.nom===magNom);if(!mag)continue;
     const magCa25=mag.totalCA2025||100000;
     const firstV=mag.vendeurs[0];if(!firstV)continue;
     const storeCa=firstV.caSaisie?.[mois]??firstV.caSheetAuto?.[mois];
@@ -2993,7 +3004,7 @@ function getAlternantTotalPrimeMois(cn,comp,alt,mois,year){
     const storeObj=firstV.objManuel?.[mois]??firstV.objSheetAuto?.[mois]??calcObj(magCa25,augm,mois);
     const primeMag=calcPrime((storeCa/storeObj)*100,getPaliersMois(comp,mois));
     if(primeMag<=0)continue;
-    total+=parseFloat(((aj.jours/diviseur)*primeMag).toFixed(2));
+    total+=parseFloat(((joursMag/diviseur)*primeMag).toFixed(2));
   }
   return ceilEuro(total);
 }
